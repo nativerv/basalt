@@ -1,12 +1,12 @@
-//! Demo app for egui
-
-#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
+// Hide console window on Windows in release
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+// Lints
+#![warn(clippy::nursery)]
 
 const APP_TITLE: &str = "Basalt";
 
 use basalt::BasaltApp;
 
-// When compiling natively:
 fn main() -> Result<(), eframe::Error> {
   {
     // Silence wgpu log spam (https://github.com/gfx-rs/wgpu/issues/3206)
@@ -30,6 +30,8 @@ fn main() -> Result<(), eframe::Error> {
 
     ..Default::default()
   };
+
+  // Actual entry point of the app
   eframe::run_native(
     APP_TITLE,
     options,

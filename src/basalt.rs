@@ -1,5 +1,6 @@
 use eframe::egui;
 
+/// Global Basalt state
 pub struct BasaltApp {
   name: String,
   age: u32,
