@@ -2,7 +2,7 @@
 
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
-const APP_TITLE: &'static str = "Basalt";
+const APP_TITLE: &str = "Basalt";
 
 use basalt::BasaltApp;
 
@@ -34,6 +34,6 @@ fn main() -> Result<(), eframe::Error> {
     APP_TITLE,
     options,
     // TODO: look at what you can do with the `creation_context`
-    Box::new(|_creation_context| Box::new(BasaltApp::default())),
+    Box::new(|_creation_context| Box::<BasaltApp>::default()),
   )
 }
