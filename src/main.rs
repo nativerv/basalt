@@ -33,6 +33,7 @@ fn main() -> Result<(), eframe::Error> {
   eframe::run_native(
     APP_TITLE,
     options,
+    // TODO: look at what you can do with the `creation_context`
     Box::new(|_creation_context| Box::new(BasaltApp::default())),
   )
 }
