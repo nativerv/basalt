@@ -20,6 +20,9 @@ jobs:
     - uses: actions-rs/toolchain@v1
       with:
         toolchain: nightly-2023-07-09 
+        profile: minimal
+        override: true
+        components: rustfmt, clippy
     - name: Check formatting
       uses: actions-rs/cargo@v1
       with:
@@ -34,9 +37,9 @@ jobs:
       uses: actions-rs/cargo@v1
       with:
         command: clippy
-        args: --all-features --all-targets
+        args: --all-features --all-targets -- --deny warnings
     - name: Test
       uses: actions-rs/cargo@v1
       with:
         command: test
-        args: --all-features
+        args: --all-features --all-targets
