@@ -8,7 +8,7 @@
 
 #### Dev dependencies: 
 
-- [mold](https://github.com/rui314/mold) linker in your `PATH`
+- [mold](https://github.com/rui314/mold) linker at `/usr/bin/mold`
 ```bash
 $ cargo run
 ```
