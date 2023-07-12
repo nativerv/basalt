@@ -26,7 +26,9 @@ $ ./scripts/build-demo-web.sh --port 8081 # override default port number
 
 - [ ] theming (a way to set background, foreground, primary accent, secondary accent from a config file/environment variables/CLI options)
 - [ ] graph renderer for notes
-    - [ ] basic renderer
+    - [ ] `Graph` trait
+    - [ ] mapper `[String] -> impl Graph` (note contents to graph)
+    - [ ] basic renderer of specific instance of Graph
     - [ ] force-based placement
     - [ ] hand edits/corrections to force-placed nodes, saved in JSON format in *notes directory* inside a hidden *metadata directory*
 - [ ] live-updated markdown renderer (github-flavored markdown)

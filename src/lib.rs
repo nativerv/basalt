@@ -1,4 +1,5 @@
 //! Basalt library
+
 //#![allow(clippy::missing_errors_doc)]
 #![warn(clippy::nursery)]
 // Lints
@@ -9,14 +10,15 @@
 
 mod basalt;
 mod fractal_clock;
-mod markdown;
-
+pub mod markdown;
+mod lib {
+  pub mod graph;
+}
 pub use basalt::BasaltApp;
 
 // ----------------------------------------------------------------------------
 
 #[cfg(target_arch = "wasm32")]
 mod web;
-
 #[cfg(target_arch = "wasm32")]
 pub use web::*;

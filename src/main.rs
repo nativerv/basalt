@@ -35,7 +35,10 @@ fn main() -> Result<(), eframe::Error> {
   eframe::run_native(
     APP_TITLE,
     options,
-    // TODO: look at what you can do with the `creation_context`
+    // TODO: look at what you can do with the `CreationContext`
+    // NOTE: one of the things that you can do is to implement
+    // and assign set custom `Storage`:
+    // https://discord.com/channels/900275882684477440/904461220592119849/1128120151137583155
     Box::new(|_creation_context| Box::<BasaltApp>::default()),
   )
 }
