@@ -10,9 +10,10 @@
 
 mod basalt;
 mod fractal_clock;
-pub mod markdown;
 mod lib {
-  pub mod graph;
+    pub mod markdown;
+    pub mod graph;
+    pub mod note_graph;
 }
 pub use basalt::BasaltApp;
 
