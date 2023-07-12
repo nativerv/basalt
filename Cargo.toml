@@ -51,6 +51,9 @@ poll-promise = { version = "0.2", optional = true, default-features = false }
 
 # feature "persistence":
 serde = { version = "1", optional = true, features = ["derive"] }
+markdown-parser = "0.1.2"
+project-root = "0.2.2"
+pulldown-cmark = "0.9.3"
 
 
 # native:

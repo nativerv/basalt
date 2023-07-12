@@ -9,6 +9,7 @@
 
 mod basalt;
 mod fractal_clock;
+mod markdown;
 
 pub use basalt::BasaltApp;
 
