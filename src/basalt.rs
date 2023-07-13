@@ -1,17 +1,17 @@
 use eframe::egui;
 
-use crate::fractal_clock::{seconds_since_midnight, FractalClock};
+use crate::features::note_graph::NoteGraph;
 
 /// Global Basalt state
 #[derive(Default)]
 pub struct BasaltApp {
-  fractal_clock: FractalClock,
+  note_graph: NoteGraph,
 }
 
 impl eframe::App for BasaltApp {
   fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
     egui::CentralPanel::default().show(ctx, |ui| {
-      self.fractal_clock.ui(ui, Some(seconds_since_midnight()));
+      self.note_graph.ui(ui);
     });
   }
 }

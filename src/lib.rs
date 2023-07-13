@@ -12,8 +12,7 @@
 
 mod basalt;
 mod features;
-mod fractal_clock;
-
+mod ui;
 mod lib {
   pub mod graph;
 }
