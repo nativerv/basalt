@@ -1,9 +1,9 @@
+use crate::features::note_graph::note_graph_mock::{NoteGraph, *};
+use crate::lib::graph::Graph;
 use egui::{containers::*, widgets::*, *};
 use epaint::CircleShape;
-use std::f32::consts::TAU;
 use std::collections::HashMap;
-use crate::lib::graph::Graph;
-use crate::features::note_graph::note_graph_mock::{NoteGraph, *};
+use std::f32::consts::TAU;
 
 #[derive(PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
@@ -73,13 +73,27 @@ impl NoteGraphUi {
     for (EdgeId(id_node1, id_node2), edge) in graph.iter_edges() {
       let (x1, y1) = node_positions.get(&id_node1).unwrap();
       let (x2, y2) = node_positions.get(&id_node2).unwrap();
-      // let node1 = vec2(*x1, *y1);
-      // let node2 = vec2(*x2, *y2);
-      // let to_node1 = (node1 - node2).normalized();
+      let start = vec2(*x1, *y1);
+      let end = vec2(*x2, *y2);
+
+      // Draw a line from node to node
       shapes.push(Shape::line_segment(
         [pos2(*x1, *y1), pos2(*x2, *y2)],
         edge.stroke,
       ));
+
+      // Draw arrow head
+      const ARROW_HEAD_ANGLE_DEGREES: f32 = 20.0;
+      const ARROW_HEAD_LENGTH: f32 = 13.0;
+      let theta = TAU / 360.0 * ARROW_HEAD_ANGLE_DEGREES;
+      let norm_towards_start = (start - end).normalized() * ARROW_HEAD_LENGTH;
+      shapes.extend([theta, -theta].into_iter().map(|theta| {
+        let arrow_part = vec2(
+          norm_towards_start.x * theta.cos() - norm_towards_start.y * theta.sin(),
+          norm_towards_start.x * theta.sin() + norm_towards_start.y * theta.cos(),
+        ) + end;
+        Shape::line_segment([end.to_pos2(), arrow_part.to_pos2()], edge.stroke)
+      }))
     }
     painter.extend(shapes);
   }

@@ -1,6 +1,6 @@
 #![allow(clippy::suboptimal_flops)]
 
-use egui::{Stroke, Color32};
+use egui::{Color32, Stroke};
 use std::marker::PhantomData;
 
 use crate::lib::graph::Graph;
