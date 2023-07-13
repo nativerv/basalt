@@ -15,10 +15,10 @@ pub trait Graph<'a> {
   type EdgeIter: Iterator<Item = (Self::EdgeId, &'a Self::EdgeData)> + 'a;
   type EdgeIterMut: Iterator<Item = (Self::EdgeId, &'a mut Self::EdgeData)> + 'a;
 
-  fn iter_nodes(&self) -> &Self::NodeIter;
-  fn iter_nodes_mut(&mut self) -> &Self::NodeIterMut;
+  fn iter_nodes(&self) -> Self::NodeIter;
+  fn iter_nodes_mut(&mut self) -> Self::NodeIterMut;
 
-  fn iter_edges(&self) -> &Self::EdgeIter;
+  fn iter_edges(&self) -> Self::EdgeIter;
   fn iter_edges_mut(&mut self) -> Self::EdgeIterMut;
 
   fn get_node(&self, id: Self::NodeId) -> &'a Self::NodeData;
