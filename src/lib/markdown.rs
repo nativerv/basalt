@@ -1,5 +1,7 @@
 use pulldown_cmark::{Event, LinkType, Parser, Tag};
-use std::fs;
+use std::{arch::x86_64::_MM_MASK_INVALID, default, fs};
+
+use super::{graph::Graph, note_graph::NoteGraph};
 
 fn work_space() -> String {
   std::env::current_dir()
@@ -14,23 +16,90 @@ fn work_space() -> String {
 //   let links = local_links_by_path(path);
 // }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Link {
   pub r#type: LinkType,
   pub text: String,
   pub destination: String,
   pub title: String,
+  pub is_image: bool,
+
+  pub normalized_name: String, // ./path/to/file 
+
+  // /home/yukkop/pidor.md
+
+  // ./pidor.md
+  // pidor.md
 }
 
 impl Link {
-  pub fn new(r#type: LinkType, text: &str, destination: &str, title: &str) -> Self {
+  pub fn new(r#type: LinkType, text: &str, destination: &str, title: &str, is_image: bool) -> Self {
     Link {
       r#type,
       text: text.to_owned(),
       destination: destination.to_owned(),
       title: title.to_owned(),
+      is_image: is_image.to_owned(),
+      normalized_name: "".into(),
     }
   }
+}
+
+#[derive(Default)]
+pub struct Options {
+  pub image: bool,
+  pub url: bool,
+  pub mardown: bool,
+  // TODO full path
+}
+
+// (url & markdown & !image) | (path & image)
+// Option { url: true, marcdown: true, image: false, .. } | Option { path: true, image: true }
+
+pub fn create_graph(
+  pathes: std::slice::Iter<'_, String>,
+  options: impl Fn(&Options) -> bool,
+  link_type: impl Fn(LinkType) -> bool,
+) {
+  let mut result = vec![];
+
+  for path in pathes {
+    let links = links_from_path(path);
+
+    for link in links.iter() {
+
+      if link_type(link.r#type) {
+        let re = regex::Regex::new(r"[a-z]+://").unwrap();
+
+        let option = Options {
+          url: re.is_match(link.destination.as_str()),
+          image: link.is_image,
+          mardown: link.destination.ends_with(".md"),
+        };
+
+        if options(&option) {
+          let mut name = link.normalized_name.clone();
+          if !option.url {
+            if link.destination.starts_with("./") {
+              name = link.destination[2..].to_string();
+            }
+          }
+          result.push(
+            Link {
+              normalized_name: name,
+              ..(*link).clone()
+            }
+          )
+        }
+      }
+    }
+  }
+
+  let graph: NoteGraph<String, (), Link>;
+  // TODO -> up
+  // for link in result {
+  //   graph.nodes.insert(link.normalized_name, link)
+  // }
 }
 
 // TODO front matter (make option)
@@ -47,8 +116,7 @@ pub fn links_from_path(path: &str) -> Vec<Link> {
   let mut links: Vec<Link> = vec![];
   for event in parser {
     match event {
-      Event::Start(Tag::Link(r#type, _, _)
-        | Tag::Image(r#type, _, _)) => {
+      Event::Start(Tag::Link(r#type, _, _) | Tag::Image(r#type, _, _)) => {
         link_title.clear();
         match r#type {
           LinkType::Inline | LinkType::Reference | LinkType::Shortcut | LinkType::Collapsed => {
@@ -57,20 +125,28 @@ pub fn links_from_path(path: &str) -> Vec<Link> {
           _ => continue,
         };
       }
-      Event::End(
-        Tag::Link(r#type, destination, title)
-        | Tag::Image(r#type, destination, title)
-      ) => {
+      Event::End(tag @ Tag::Link(..) | tag @ Tag::Image(..)) => {
         in_link = false;
-        match r#type {
-          LinkType::Inline
-          | LinkType::Reference
-          | LinkType::Shortcut
-          | LinkType::Collapsed => {}
-          LinkType::Autolink => {}
-          _ => continue,
-        };
-        links.push(Link::new(r#type, &link_title, &destination, &title));
+        if let Tag::Link(r#type, destination, title) | Tag::Image(r#type, destination, title) =
+          tag.clone()
+        {
+          match r#type {
+            LinkType::Inline | LinkType::Reference | LinkType::Shortcut | LinkType::Collapsed => {}
+            LinkType::Autolink => {}
+            _ => continue,
+          };
+          links.push(Link::new(
+            r#type,
+            &link_title,
+            &destination,
+            &title,
+            if let Tag::Image(..) = tag {
+              true
+            } else {
+              false
+            },
+          ));
+        }
       }
       Event::Text(text) if in_link => {
         link_title.push_str(&text.to_string());
@@ -100,7 +176,7 @@ pub fn links_from_path(path: &str) -> Vec<Link> {
 
 #[cfg(test)]
 mod test {
-  use std::fs;
+  use std::{fs, path::Path};
 
   use markdown_parser::{read_file, Error};
   use pulldown_cmark::{Event, Parser, Tag};
@@ -119,6 +195,14 @@ mod test {
     let content = md.content();
     println!("{}", content);
     Ok(())
+  }
+
+  #[test]
+  fn path_test() {
+    let a = Path::new("./pidor.md");
+    let b = Path::new("pidor.md");
+
+    assert_eq!(a, b)
   }
 
   #[test]

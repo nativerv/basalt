@@ -198,6 +198,7 @@ dependencies = [
  "poll-promise",
  "project-root",
  "pulldown-cmark",
+ "regex",
  "serde",
  "wasm-bindgen",
  "wasm-bindgen-futures",
