@@ -9,6 +9,7 @@
 #![feature(stmt_expr_attributes)]
 
 mod basalt;
+mod features;
 mod fractal_clock;
 mod lib {
   pub mod graph;

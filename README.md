@@ -23,8 +23,8 @@ $ ./scripts/build-demo-web.sh --open # also open in browser on http://localhost:
 $ ./scripts/build-demo-web.sh --port 8081 # override default port number
 ```
 ## Todo
-
-- [ ] theming (a way to set background, foreground, primary accent, secondary accent from a config file/environment variables/CLI options)
+- [ ] configuration engine (from a config file/environment variables/CLI options)
+	- [ ] theming (set background, foreground, primary accent, secondary accent)
 - [ ] graph renderer for notes
     - [ ] `Graph` trait
     - [ ] mapper `[String] -> impl Graph` (note contents to graph)
