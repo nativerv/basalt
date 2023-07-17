@@ -5,11 +5,15 @@
 // Lints
 #![warn(clippy::nursery)]
 #![warn(missing_docs)]
+// Allow adequate module structure
+#![allow(clippy::module_inception)]
 // Allow disabling clippy for expressions etc.
 #![feature(stmt_expr_attributes)]
 
 mod basalt;
+mod features;
 mod fractal_clock;
+
 mod lib {
   pub mod graph;
 }
