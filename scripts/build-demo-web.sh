@@ -12,12 +12,7 @@ OUT_DIR="public"
 # https://rustwasm.github.io/wasm-bindgen/api/web_sys/struct.Clipboard.html
 # https://rustwasm.github.io/docs/wasm-bindgen/web-sys/unstable-apis.html
 export RUSTFLAGS=--cfg=web_sys_unstable_apis
-
-CRATE_NAME="basalt"
-
- # NOTE: persistence use up about 400kB (10%) of the WASM!
-FEATURES="http,persistence,web_screen_reader"
-
+ 
 OPEN=false
 OPTIMIZE=false
 BUILD=debug

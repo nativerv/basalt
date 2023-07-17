@@ -5,6 +5,18 @@ pub struct NoteGraph<NodeId, Edge = (), Node = ()> {
     pub adjacency: HashMap<NodeId, Vec<Adjacement<NodeId, Edge>>>
 }
 
+impl<NodeId, Edge, Node> Default for NoteGraph<NodeId, Edge, Node>
+where
+    NodeId: std::hash::Hash + Eq,
+{
+    fn default() -> Self {
+        NoteGraph {
+            nodes: HashMap::new(),
+            adjacency: HashMap::new(),
+        }
+    }
+}
+
 pub struct  Adjacement<NodeId, Edge>(NodeId, Edge);
 
 pub struct Node {

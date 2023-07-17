@@ -24,12 +24,12 @@ pub struct Link {
   pub title: String,
   pub is_image: bool,
 
-  pub normalized_name: String, // ./path/to/file 
+  pub normalized_name: String, // ./path/to/file
 
-  // /home/yukkop/pidor.md
+                               // /home/yukkop/pidor.md
 
-  // ./pidor.md
-  // pidor.md
+                               // ./pidor.md
+                               // pidor.md
 }
 
 impl Link {
@@ -61,13 +61,13 @@ pub fn create_graph(
   options: impl Fn(&Options) -> bool,
   link_type: impl Fn(LinkType) -> bool,
 ) {
-  let mut result = vec![];
+  let mut graph_draft: Vec<(String, Vec<Link>)> = vec![];
 
   for path in pathes {
     let links = links_from_path(path);
+    let mut links_2 = vec![];
 
     for link in links.iter() {
-
       if link_type(link.r#type) {
         let re = regex::Regex::new(r"[a-z]+://").unwrap();
 
@@ -78,27 +78,49 @@ pub fn create_graph(
         };
 
         if options(&option) {
+          // normalize name
           let mut name = link.normalized_name.clone();
           if !option.url {
             if link.destination.starts_with("./") {
               name = link.destination[2..].to_string();
             }
           }
-          result.push(
-            Link {
-              normalized_name: name,
-              ..(*link).clone()
-            }
-          )
+
+          links_2.push(Link {
+            normalized_name: name,
+            ..(*link).clone()
+          })
         }
       }
     }
+
+    graph_draft.push((path.clone(), links_2));
   }
 
-  let graph: NoteGraph<String, (), Link>;
+  let mut graph: NoteGraph<String, (), Link> = NoteGraph {
+    nodes: NoteGraph::from(""),
+    adjacency: (),
+  };
   // TODO -> up
-  // for link in result {
-  //   graph.nodes.insert(link.normalized_name, link)
+
+  // make nodes from paths
+  for path in pathes {
+    // normalize name
+    let mut name = path.clone();
+    if path.starts_with("./") {
+      name = path[2..].to_string();
+    }
+
+    graph
+      .nodes
+      .insert(name.clone(), Node { link: path.clone() });
+  }
+
+  // for node in graph_draft.iter() {
+  //   for link in node.1.iter() {
+  //     graph.nodes.insert(link.destination.clone(), link.clone());
+  //     graph.adjacency.insert(link.destination.clone(), vec![]);
+  //   }
   // }
 }
 
@@ -199,8 +221,8 @@ mod test {
 
   #[test]
   fn path_test() {
-    let a = Path::new("./pidor.md");
-    let b = Path::new("pidor.md");
+    let a = Path::new("./name.md");
+    let b = Path::new("name.md");
 
     assert_eq!(a, b)
   }
