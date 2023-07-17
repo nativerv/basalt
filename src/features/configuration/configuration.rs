@@ -1,7 +1,6 @@
 use egui::Color32;
 use serde::{Deserialize, Serialize};
 use serde_json::{self, Map, Value};
-use std::collections::HashMap;
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::PathBuf;
@@ -42,29 +41,31 @@ impl Default for Configuration {
 }
 
 impl From<&Map<String, Value>> for Configuration {
-    fn from(value: &Map<String, Value>) -> Self {
-      let s = serde_json::to_string(&value).expect("To string convert error");
-      serde_json::from_str(&s).expect("From string convert error")
-    }
+  fn from(value: &Map<String, Value>) -> Self {
+    let s = serde_json::to_string(&value).expect("To string convert error");
+    serde_json::from_str(&s).expect("From string convert error")
+  }
 }
 
 impl Configuration {
-  //TODO: replace json to conf format with include ordering 
-  pub fn read_configuration(readable_content: &mut impl Read) -> Configuration {
+  //TODO: replace json to conf format with include ordering
+  //TODO: remove allow(dead_code)
+  #[allow(dead_code)]
+  pub fn read_configuration(readable_content: &mut impl Read) -> Self {
     let mut content = String::new();
     readable_content
       .read_to_string(&mut content)
       .expect("Could not read file");
     let mut configuration_map: Map<String, Value> =
       serde_json::from_str(&content).expect("From string convert error");
-    let temp_config:Configuration = serde_json::from_str(&content).expect("From string convert error");
+    let temp_config: Self = serde_json::from_str(&content).expect("From string convert error");
     for included_file in temp_config.include.iter() {
-      Configuration::read_configuration_inside(
-        &mut File::open(&included_file).expect("Could not read file"),
+      Self::read_configuration_inside(
+        &mut File::open(included_file).expect("Could not read file"),
         &mut configuration_map,
       )
     }
-    Configuration::from(&configuration_map)
+    Self::from(&configuration_map)
   }
 
   fn read_configuration_inside(
@@ -78,25 +79,30 @@ impl Configuration {
     let current_configuration: Map<String, Value> =
       serde_json::from_str(&content).expect("JSON was not well-formatted");
     for (str, val) in current_configuration {
-      *configuration.get_mut(&str).expect("Get mutable value error") = val;
+      *configuration
+        .get_mut(&str)
+        .expect("Get mutable value error") = val;
     }
-    let included_files = Configuration::from(&*configuration).include;
+    let included_files = Self::from(&*configuration).include;
     for included_file in included_files.iter() {
-      Configuration::read_configuration_inside(
-        &mut File::open(&included_file).expect("Could not read file"),
+      Self::read_configuration_inside(
+        &mut File::open(included_file).expect("Could not read file"),
         configuration,
       )
     }
   }
 
-  pub fn write_configuration(writable_content: &mut impl Write, configuration: &Configuration) {
-    let content = serde_json::to_string_pretty(&configuration).expect("Could not serialize configuration");
+  #[allow(dead_code)]
+  pub fn write_configuration(writable_content: &mut impl Write, configuration: &Self) {
+    let content =
+      serde_json::to_string_pretty(&configuration).expect("Could not serialize configuration");
     writable_content
       .write_all(content.as_bytes())
       .expect("Could not write file");
   }
 }
 
+#[cfg(test)]
 mod test {
   use crate::features::configuration::configuration::Configuration;
   use egui::Color32;
@@ -147,11 +153,11 @@ mod test {
       secondary_color: Color32::from_rgb(0, 0, 0),
     };
     Configuration::write_configuration(
-      &mut File::create("tests/config_write.json").expect("Could not open file for write"),
+      &mut File::create("tests/config_write_and_read.json").expect("Could not open file for write"),
       &start_config,
     );
     let readed_config = Configuration::read_configuration(
-      &mut File::open("tests/config_write.json").expect("Could not open file"),
+      &mut File::open("tests/config_write_and_read.json").expect("Could not open file"),
     );
     assert_eq!(start_config, readed_config);
   }

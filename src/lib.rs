@@ -5,19 +5,17 @@
 // Lints
 #![warn(clippy::nursery)]
 #![warn(missing_docs)]
+// Allow adequate module structure
+#![allow(clippy::module_inception)]
 // Allow disabling clippy for expressions etc.
 #![feature(stmt_expr_attributes)]
-#[macro_use] extern crate lazy_static;
 
 mod basalt;
 mod features;
 mod fractal_clock;
 
-
 mod lib {
   pub mod graph;
-  #[macro_use]
-  pub mod serial_test;
 }
 pub use basalt::BasaltApp;
 
