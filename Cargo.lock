@@ -193,6 +193,7 @@ dependencies = [
  "ehttp",
  "env_logger",
  "image",
+ "lazy_static",
  "log",
  "poll-promise",
  "serde",
