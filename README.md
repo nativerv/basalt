@@ -27,6 +27,7 @@ $ ./scripts/build-demo-web.sh --port 8081 # override default port number
 	- [ ] theming (set background, foreground, primary accent, secondary accent)
 - [ ] graph renderer for notes
     - [ ] `Graph` trait
+        - [ ] `iter_adjacent(node) -> Iterator<Item = (EdgeId, &EdgeData)>`
     - [ ] mapper `[String] -> impl Graph` (note contents to graph)
     - [ ] basic renderer of specific instance of Graph
     - [ ] force-based placement

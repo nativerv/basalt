@@ -4,6 +4,8 @@ use egui::{Color32, Stroke};
 use std::marker::PhantomData;
 
 use crate::lib::graph::Graph;
+
+#[derive(PartialEq, Eq)]
 pub struct NoteGraph;
 
 #[derive(PartialOrd, PartialEq, Eq, Hash, Clone, Copy)]
@@ -147,7 +149,7 @@ impl<'a> Graph<'a> for NoteGraph {
       .map(|(_, node)| node)
       .unwrap()
   }
-  fn get_node_mut(&mut self, id: Self::NodeId) -> &'a mut Self::NodeData {
+  fn get_node_mut(&mut self, _id: Self::NodeId) -> &'a mut Self::NodeData {
     unimplemented!()
   }
 
@@ -158,7 +160,7 @@ impl<'a> Graph<'a> for NoteGraph {
       .map(|(_, edge)| edge)
       .unwrap()
   }
-  fn get_edge_mut(&mut self, id: Self::EdgeId) -> &'a mut Self::EdgeData {
+  fn get_edge_mut(&mut self, _id: Self::EdgeId) -> &'a mut Self::EdgeData {
     unimplemented!()
   }
 }
