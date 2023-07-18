@@ -65,8 +65,15 @@ pub const NODES: &[(NodeId, &NodeData)] = &[
 #[rustfmt::skip]
 const EDGES: &[(EdgeId, &EdgeData)] = &[
   (EdgeId(NodeId(1), NodeId(2)), &EdgeData { stroke: Stroke { width: 2.0, color: Color32::WHITE } }),
-  (EdgeId(NodeId(2), NodeId(3)), &EdgeData { stroke: Stroke { width: 2.0, color: Color32::RED } }),
-  (EdgeId(NodeId(5), NodeId(6)), &EdgeData { stroke: Stroke { width: 2.0, color: Color32::RED } }),
+  (EdgeId(NodeId(2), NodeId(1)), &EdgeData { stroke: Stroke { width: 2.0, color: Color32::WHITE } }),
+  (EdgeId(NodeId(3), NodeId(1)), &EdgeData { stroke: Stroke { width: 2.0, color: Color32::WHITE } }),
+  (EdgeId(NodeId(5), NodeId(1)), &EdgeData { stroke: Stroke { width: 2.0, color: Color32::WHITE } }),
+  (EdgeId(NodeId(6), NodeId(1)), &EdgeData { stroke: Stroke { width: 2.0, color: Color32::WHITE } }),
+  (EdgeId(NodeId(8), NodeId(1)), &EdgeData { stroke: Stroke { width: 2.0, color: Color32::WHITE } }),
+  (EdgeId(NodeId(9), NodeId(1)), &EdgeData { stroke: Stroke { width: 2.0, color: Color32::WHITE } }),
+  (EdgeId(NodeId(10), NodeId(1)), &EdgeData { stroke: Stroke { width: 2.0, color: Color32::WHITE } }),
+  (EdgeId(NodeId(11), NodeId(1)), &EdgeData { stroke: Stroke { width: 2.0, color: Color32::WHITE } }),
+  (EdgeId(NodeId(12), NodeId(1)), &EdgeData { stroke: Stroke { width: 2.0, color: Color32::WHITE } }),
   (EdgeId(NodeId(3), NodeId(9)), &EdgeData { stroke: Stroke { width: 2.0, color: Color32::RED } }),
   (EdgeId(NodeId(7), NodeId(6)), &EdgeData { stroke: Stroke { width: 2.0, color: Color32::RED } }),
   (EdgeId(NodeId(7), NodeId(3)), &EdgeData { stroke: Stroke { width: 2.0, color: Color32::RED } }),

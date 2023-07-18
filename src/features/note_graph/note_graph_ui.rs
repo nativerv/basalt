@@ -99,9 +99,9 @@ impl DerefMut for NodePositions {
 //   }
 // }
 
-const GRAVITY_CONSTANT: f32 = 0.05;
-const FORCE_CONSTANT: f32 = 500.0;
-const IDEAL_LENGTH: f32 = 3.0;
+const GRAVITY_CONSTANT: f32 = 0.1;
+const FORCE_CONSTANT: f32 = 1000.0;
+const IDEAL_LENGTH: f32 = 25.0;
 
 fn apply_forces(
   graph: &impl for<'a> Graph<'a, NodeId = NodeId, EdgeId = EdgeId>,
@@ -114,13 +114,14 @@ fn apply_forces(
   }
 
   // apply repulsive force between nodes
+  let f_rep = |direction: Vec2| (direction / (direction.length().powi(2))) * FORCE_CONSTANT;
   for (index, (node_id1, ..)) in graph.iter_nodes().enumerate() {
     for (node_id2, ..) in graph.iter_nodes().skip(index + 1)
     {
       let node1_fdp = node_positions.get(&node_id1).unwrap();
       let node2_fdp = node_positions.get(&node_id2).unwrap();
       let direction = node2_fdp.pos - node1_fdp.pos;
-      let force = (direction / (direction.length().powi(2))) * FORCE_CONSTANT;
+      let force = f_rep(direction);
       node_positions.get_mut(&node_id1).unwrap().force += -force;
       node_positions.get_mut(&node_id2).unwrap().force += force;
     }
@@ -131,11 +132,10 @@ fn apply_forces(
     let node1_fdp = node_positions.get(&node_id1).unwrap();
     let node2_fdp = node_positions.get(&node_id2).unwrap();
     let dis = (node1_fdp.pos - node2_fdp.pos) / 8.0;
-    //let diff = dis.length() - IDEAL_LENGTH;
-    //node_positions.get_mut(&node_id1).unwrap().force += -dis + vec2(-diff, -diff);
-    //node_positions.get_mut(&node_id2).unwrap().force += dis + vec2(diff, diff);
-    node_positions.get_mut(&node_id1).unwrap().force += -dis;
-    node_positions.get_mut(&node_id2).unwrap().force += dis;
+    let diff = (dis.length() / IDEAL_LENGTH).log10();
+    //let diff = diff / diff.powi(2);
+    node_positions.get_mut(&node_id1).unwrap().force += -dis * Vec2::splat(diff);
+    node_positions.get_mut(&node_id2).unwrap().force += dis * Vec2::splat(diff);
   }
 
   //for (node_id1, ..) in graph.iter_nodes() {
