@@ -3,7 +3,7 @@
 use egui::{Color32, Stroke};
 use std::marker::PhantomData;
 
-use crate::lib::graph::Graph;
+use crate::lib::graph::{EdgeIncidents, Graph};
 
 #[derive(PartialEq, Eq)]
 pub struct NoteGraph;
@@ -149,6 +149,15 @@ impl<'a> Graph<'a> for NoteGraph {
     unimplemented!()
   }
 
+  /// Iterate edges incident to the node
+  fn iter_incidents(&self, _node_id: Self::NodeId) -> Self::EdgeIter {
+    unimplemented!()
+  }
+  /// Iterate edges incident to the node (mutably)
+  fn iter_incidents_mut(&mut self, _node_id: Self::NodeId) -> Self::EdgeIterMut {
+    unimplemented!()
+  }
+
   fn get_node(&self, id: Self::NodeId) -> &'a Self::NodeData {
     NODES
       .iter()
@@ -168,6 +177,42 @@ impl<'a> Graph<'a> for NoteGraph {
       .unwrap()
   }
   fn get_edge_mut(&mut self, _id: Self::EdgeId) -> &'a mut Self::EdgeData {
+    unimplemented!()
+  }
+  /// Get incident nodes of the edge
+  fn get_edge_incidents(&self, edge_id: Self::EdgeId) -> EdgeIncidents<Self::NodeId> {
+    EDGES
+      .iter()
+      .find(|edge| edge.0 == edge_id)
+      .map(|(EdgeId(node1_id, node2_id), ..)| EdgeIncidents {
+        node_from: *node1_id,
+        node_to: *node2_id,
+      })
+      .unwrap()
+  }
+
+  /// Adds a node to the graph
+  fn add_node(&mut self, _data: &Self::NodeData) -> Self::NodeId {
+    unimplemented!()
+  }
+
+  /// Removes a node from the graph, returning it's `NodeData` if the node was previously in the graph
+  fn remove_node(&mut self, _data: Self::NodeId) -> Option<Self::NodeData> {
+    unimplemented!()
+  }
+
+  /// Adds an edge to the graph
+  fn add_edge(
+    &mut self,
+    _node_from: Self::NodeId,
+    _node_to: Self::NodeId,
+    _data: &Self::EdgeData,
+  ) -> Self::EdgeId {
+    unimplemented!()
+  }
+
+  /// Removes an edge from the graph, returning it's `EdgeData` if the edge was previously in the graph
+  fn remove_edge(&mut self, _data: Self::EdgeId) -> Option<Self::EdgeData> {
     unimplemented!()
   }
 }

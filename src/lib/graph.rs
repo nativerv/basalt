@@ -38,10 +38,7 @@ pub trait Graph<'a> {
   fn get_edge_mut(&mut self, id: Self::EdgeId) -> &'a mut Self::EdgeData;
 
   /// Get incident nodes of the edge
-  fn get_edge_incidents(&self, edge_id: Self::EdgeId) -> EdgeIncidents<(Self::NodeId, &'a Self::NodeData)>;
-
-  /// Get incident nodes of the edge (mutably)
-  fn get_edge_incidents_mut(&mut self, edge_id: Self::EdgeId) -> EdgeIncidents<(Self::NodeId, &'a mut Self::NodeData)>;
+  fn get_edge_incidents(&self, edge_id: Self::EdgeId) -> EdgeIncidents<Self::NodeId>;
 
   /// Adds a node to the graph
   fn add_node(&mut self, data: &Self::NodeData) -> Self::NodeId;
@@ -50,7 +47,12 @@ pub trait Graph<'a> {
   fn remove_node(&mut self, data: Self::NodeId) -> Option<Self::NodeData>;
 
   /// Adds an edge to the graph
-  fn add_edge(&mut self, node_from: Self::NodeId, node_to: Self::NodeId, data: &Self::EdgeData) -> Self::EdgeId;
+  fn add_edge(
+    &mut self,
+    node_from: Self::NodeId,
+    node_to: Self::NodeId,
+    data: &Self::EdgeData,
+  ) -> Self::EdgeId;
 
   /// Removes an edge from the graph, returning it's `EdgeData` if the edge was previously in the graph
   fn remove_edge(&mut self, data: Self::EdgeId) -> Option<Self::EdgeData>;

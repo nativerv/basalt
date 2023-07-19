@@ -14,6 +14,7 @@ mod basalt;
 mod features;
 mod ui;
 mod lib {
+  pub mod fdp;
   pub mod graph;
 }
 pub use basalt::BasaltApp;
