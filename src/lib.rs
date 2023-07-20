@@ -3,6 +3,7 @@
 //#![allow(clippy::missing_errors_doc)]
 #![warn(clippy::nursery)]
 // Lints
+// TODO: warn more allowed-by-default lints
 #![warn(clippy::nursery)]
 #![warn(missing_docs)]
 // Allow adequate module structure

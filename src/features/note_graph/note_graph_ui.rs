@@ -8,11 +8,18 @@ use std::f32::consts::TAU;
 
 // #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 // #[cfg_attr(feature = "serde", serde(default))]
+/// NoteGraph ui state
 pub struct NoteGraphUi {
   node_positions: eades_custom::NodePositions<NodeId>,
   note_graph: NoteGraph,
   width: f32,
   height: f32,
+  dragged_node: Option<NodeDrag>,
+}
+
+struct NodeDrag {
+  offset: Vec2,
+  node_id: NodeId,
 }
 
 impl Default for NoteGraphUi {
@@ -43,6 +50,7 @@ impl Default for NoteGraphUi {
       note_graph,
       width: 0.0,
       height: 0.0,
+      dragged_node: None,
     }
   }
 }
@@ -64,6 +72,30 @@ impl NoteGraphUi {
     // Make sure we allocate what we used (everything)
     // TODO: figure out why exactly this is needed (or not)
     ui.expand_to_include_rect(painter.clip_rect());
+
+    if ui.input(|input| input.pointer.primary_pressed()) {
+      let pointer_pos = ui.input(|input| input.pointer.interact_pos());
+      self.dragged_node = self.node_positions.iter().find_map(|(&node_id, node_fdp)| {
+        let pointer_pos = pointer_pos.expect("pointer_pos is checked to not be `None` already");
+        let pointer_to_node = node_fdp.pos - pointer_pos.to_vec2();
+        let center = vec2(self.width / 2.0, self.height / 2.0);
+        let node_radius = self.note_graph.get_node(node_id).radius;
+        ((pointer_to_node + center).length() <= node_radius).then_some(NodeDrag {
+          offset: pointer_to_node,
+          node_id,
+        })
+      });
+    }
+    if ui.input(|input| input.pointer.primary_down()) && self.dragged_node.is_some() {
+      let interact_pos = ui.input(|input| dbg!(input.pointer.interact_pos())).unwrap();
+      self
+        .node_positions
+        .get_mut(&self.dragged_node.as_ref().unwrap().node_id)
+        .unwrap()
+        .pos = interact_pos.to_vec2() + self.dragged_node.as_ref().unwrap().offset;
+    } else {
+      self.dragged_node = None;
+    }
 
     Window::new("Options")
       .frame(Frame::popup(ui.style()))
@@ -96,6 +128,7 @@ impl NoteGraphUi {
       let eades_custom::NodeFdpData { pos, force } = self.node_positions.get_mut(&id).unwrap();
 
       // Apply forces
+      // TODO: maybe decouple FDP force application from rendering/painting
       *pos += *force;
 
       // Render

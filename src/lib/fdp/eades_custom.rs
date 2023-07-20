@@ -11,9 +11,8 @@ pub struct NodeFdpData {
 }
 
 pub type NodePositionsHashMap<NodeId> = HashMap<NodeId, NodeFdpData>;
-pub struct NodePositions<NodeId>(pub NodePositionsHashMap<NodeId>)
-where
-  NodeId: Hash + Eq;
+pub struct NodePositions<NodeId: Hash + Eq>(pub NodePositionsHashMap<NodeId>);
+
 impl<NodeId> Deref for NodePositions<NodeId>
 where
   NodeId: Hash + Eq,
