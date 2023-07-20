@@ -87,7 +87,7 @@ impl NoteGraphUi {
       });
     }
     if ui.input(|input| input.pointer.primary_down()) && self.dragged_node.is_some() {
-      let interact_pos = ui.input(|input| dbg!(input.pointer.interact_pos())).unwrap();
+      let interact_pos = ui.input(|input| (input.pointer.interact_pos())).unwrap();
       self
         .node_positions
         .get_mut(&self.dragged_node.as_ref().unwrap().node_id)
@@ -146,8 +146,15 @@ impl NoteGraphUi {
       let eades_custom::NodeFdpData { pos: start, .. } =
         self.node_positions.get(&id_node1).unwrap();
       let eades_custom::NodeFdpData { pos: end, .. } = self.node_positions.get(&id_node2).unwrap();
+      let start_node = self.note_graph.get_node(id_node1);
+      let end_node = self.note_graph.get_node(id_node2);
       let start = start.to_pos2() + vec2(self.width / 2.0, self.height / 2.0);
       let end = end.to_pos2() + vec2(self.width / 2.0, self.height / 2.0);
+      let start_offset = (end - start).normalized() * start_node.radius;
+      let end_offset = (start - end).normalized() * end_node.radius;
+
+      let start = start + start_offset;
+      let end = end + end_offset;
 
       // Draw a line from node to node
       shapes.push(Shape::line_segment([start, end], edge.stroke));
