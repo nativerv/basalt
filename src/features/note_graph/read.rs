@@ -5,7 +5,7 @@ use pulldown_cmark::{Event, LinkType, Parser, Tag};
 
 use super::{
   models::{Link, LinkEdge, LinkNode},
-  note_graph::{Adjacement, Node, NoteGraph},
+  note_graph::{Adjacement, NoteGraph},
 };
 
 fn work_space() -> String {
@@ -21,16 +21,17 @@ fn work_space() -> String {
 pub struct Options {
   pub image: bool,
   pub url: bool,
-  pub mardown: bool,
+  pub markdown: bool,
   // TODO full path
 }
 
+#[allow(dead_code)] // TODO remove
 pub fn create_graph_default_options(
   pathes: std::slice::Iter<'_, String>,
 ) -> NoteGraph<String, LinkEdge, LinkNode> {
   create_graph(
     pathes,
-    |op: &Options| !op.url && !op.image && op.mardown,
+    |op: &Options| !op.url && !op.image && op.markdown,
     |link_type: LinkType| {
       link_type == LinkType::Inline
         || link_type == LinkType::Reference
@@ -45,42 +46,68 @@ pub fn create_graph(
   options: impl Fn(&Options) -> bool,
   link_type: impl Fn(LinkType) -> bool,
 ) -> NoteGraph<String, LinkEdge, LinkNode> {
-  let mut graph_draft_v1: Vec<(String, Vec<Link>)> = vec![];
-  let mut graph_draft_v2: HashMap<String, Vec<Link>> = HashMap::default();
+  let mut graph_draft_v1: Vec<(FilePath, Vec<Link>)> = vec![];
+  let mut graph_draft_v2: HashMap<FilePath, Vec<Link>> = HashMap::default();
 
   let mut graph: NoteGraph<String, LinkEdge, LinkNode> = NoteGraph::default();
 
+  #[derive(Debug, Clone, PartialEq, Hash, Eq)]
+  struct FilePath {
+    basename: String,
+    dirname: String,
+  }
+
+  impl FilePath {
+      fn fullname(&self) -> String {
+          format!("{}/{}", self.dirname, self.basename)
+      }
+  }
+
   // make nodes from paths
-  let mut new_paths = vec![];
+  let mut new_paths: Vec<FilePath> = vec![];
   for path in pathes {
-    // normalize name
-    let mut name = path.clone();
-    if path.starts_with("./") {
-      name = path[2..].to_string();
+    if !path.starts_with("/") {
+      log::warn!(
+        "Oaoaoaoao, a global path has not been detected, code is red, code is red: {}",
+        path
+      );
+      continue;
     }
-    // else if path.starts_with("/") {
-    //   // TODO handle global path
-    //   log::warn!(
-    //     "Oaoaoaoao, a global path has been detected, code is red, code is red: {}",
-    //     path
-    //   );
-    //   continue;
-    // }
+
+    match fs::metadata(path) {
+      Ok(metadata) => {
+        if !metadata.is_file() {
+          log::warn!("Oaoaoaoao, is not a files: {}", path);
+        }
+
+        // if !path.ends_with(".md") { // TODO think
+        //   log::warn!("Oaoaoaoao, is not a markdown file: {}", path);
+        // }
+      }
+      Err(_) => {
+        log::warn!("Oaoaoaoao, file not found: {}", path);
+      }
+    }
+
+    let splited_path = path.split("/").collect::<Vec<&str>>();
+    let path = FilePath {
+      basename: splited_path.last().unwrap().to_string(),
+      dirname: splited_path[..splited_path.len() - 1].join("/"),
+    };
 
     // add root node(s)
     graph.nodes.insert(
-      name.clone(),
+      path.fullname(),
       LinkNode {
-        id: name.clone(),
         is_image: false,
       },
     );
 
-    new_paths.push(name);
+    new_paths.push(path);
   }
 
-  for path in new_paths {
-    let links = links_from_path(path.as_str());
+  for path in new_paths { // TODO check full path
+    let links = links_from_path(path.fullname().as_str());
     let mut filtred_links = vec![];
 
     for link in links.iter() {
@@ -90,7 +117,7 @@ pub fn create_graph(
         let option = Options {
           url: re.is_match(link.destination.as_str()),
           image: link.is_image,
-          mardown: link.destination.ends_with(".md"),
+          markdown: link.destination.ends_with(".md"),
         };
 
         if options(&option) {
@@ -116,17 +143,16 @@ pub fn create_graph(
 
   // make edges from links
   for (path, links) in graph_draft_v1.iter() {
-    // TODO rewrite to graph_draft_v2
     for link in links.iter() {
       graph.nodes.insert(
         link.normalized_name.clone(),
         LinkNode {
-          id: link.normalized_name.clone(),
           is_image: link.is_image,
         },
       );
 
-      match graph.adjacency.get::<String>(path) {
+      let path_fullname = path.fullname();
+      match graph.adjacency.get::<String>(&path_fullname) {
         Some(adjacents) => {
           let mut new_adjacents = adjacents.clone();
           new_adjacents.push(Adjacement(
@@ -137,11 +163,11 @@ pub fn create_graph(
               title: link.title.clone(),
             },
           ));
-          graph.adjacency.insert(path.clone(), new_adjacents.clone());
+          graph.adjacency.insert(path_fullname.clone(), new_adjacents.clone());
         }
         None => {
           graph.adjacency.insert(
-            path.clone(),
+            path_fullname.clone(),
             vec![Adjacement(
               link.normalized_name.clone(),
               LinkEdge {

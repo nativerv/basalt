@@ -27,7 +27,6 @@ impl Link {
 
 #[derive(Debug, Clone)]
 pub struct LinkNode {
-  pub id: String, 
   pub is_image: bool,
 }
 
