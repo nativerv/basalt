@@ -20,6 +20,7 @@ You will like those projects!
 ###### h6 Heading
 
 [link to sample 2](./sample2.md)
+[link to sample 3](./sample3.md)
 
 ## Horizontal Rules
 

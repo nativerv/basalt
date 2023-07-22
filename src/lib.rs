@@ -11,10 +11,9 @@
 mod basalt;
 mod fractal_clock;
 mod lib {
-    pub mod markdown;
     pub mod graph;
-    pub mod note_graph;
 }
+mod features;
 pub use basalt::BasaltApp;
 
 // ----------------------------------------------------------------------------

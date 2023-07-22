@@ -1,7 +1,12 @@
-use pulldown_cmark::{Event, LinkType, Parser, Tag};
-use std::{arch::x86_64::_MM_MASK_INVALID, default, fs};
+use std::fs;
 
-use super::{graph::Graph, note_graph::NoteGraph};
+use egui::epaint::ahash::HashMap;
+use pulldown_cmark::{Event, LinkType, Parser, Tag};
+
+use super::{
+  models::{Link, LinkEdge, LinkNode},
+  note_graph::{Adjacement, Node, NoteGraph},
+};
 
 fn work_space() -> String {
   std::env::current_dir()
@@ -12,39 +17,6 @@ fn work_space() -> String {
     .to_string()
 }
 
-// pub fn req(path: &str) {
-//   let links = local_links_by_path(path);
-// }
-
-#[derive(Debug, Clone)]
-pub struct Link {
-  pub r#type: LinkType,
-  pub text: String,
-  pub destination: String,
-  pub title: String,
-  pub is_image: bool,
-
-  pub normalized_name: String, // ./path/to/file
-
-                               // /home/yukkop/pidor.md
-
-                               // ./pidor.md
-                               // pidor.md
-}
-
-impl Link {
-  pub fn new(r#type: LinkType, text: &str, destination: &str, title: &str, is_image: bool) -> Self {
-    Link {
-      r#type,
-      text: text.to_owned(),
-      destination: destination.to_owned(),
-      title: title.to_owned(),
-      is_image: is_image.to_owned(),
-      normalized_name: "".into(),
-    }
-  }
-}
-
 #[derive(Default)]
 pub struct Options {
   pub image: bool,
@@ -53,19 +25,63 @@ pub struct Options {
   // TODO full path
 }
 
-// (url & markdown & !image) | (path & image)
-// Option { url: true, marcdown: true, image: false, .. } | Option { path: true, image: true }
+pub fn create_graph_default_options(
+  pathes: std::slice::Iter<'_, String>,
+) -> NoteGraph<String, LinkEdge, LinkNode> {
+  create_graph(
+    pathes,
+    |op: &Options| !op.url && !op.image && op.mardown,
+    |link_type: LinkType| {
+      link_type == LinkType::Inline
+        || link_type == LinkType::Reference
+        || link_type == LinkType::Shortcut
+        || link_type == LinkType::Collapsed
+    },
+  )
+}
 
 pub fn create_graph(
   pathes: std::slice::Iter<'_, String>,
   options: impl Fn(&Options) -> bool,
   link_type: impl Fn(LinkType) -> bool,
-) {
-  let mut graph_draft: Vec<(String, Vec<Link>)> = vec![];
+) -> NoteGraph<String, LinkEdge, LinkNode> {
+  let mut graph_draft_v1: Vec<(String, Vec<Link>)> = vec![];
+  let mut graph_draft_v2: HashMap<String, Vec<Link>> = HashMap::default();
 
+  let mut graph: NoteGraph<String, LinkEdge, LinkNode> = NoteGraph::default();
+
+  // make nodes from paths
+  let mut new_paths = vec![];
   for path in pathes {
-    let links = links_from_path(path);
-    let mut links_2 = vec![];
+    // normalize name
+    let mut name = path.clone();
+    if path.starts_with("./") {
+      name = path[2..].to_string();
+    }
+    // else if path.starts_with("/") {
+    //   // TODO handle global path
+    //   log::warn!(
+    //     "Oaoaoaoao, a global path has been detected, code is red, code is red: {}",
+    //     path
+    //   );
+    //   continue;
+    // }
+
+    // add root node(s)
+    graph.nodes.insert(
+      name.clone(),
+      LinkNode {
+        id: name.clone(),
+        is_image: false,
+      },
+    );
+
+    new_paths.push(name);
+  }
+
+  for path in new_paths {
+    let links = links_from_path(path.as_str());
+    let mut filtred_links = vec![];
 
     for link in links.iter() {
       if link_type(link.r#type) {
@@ -86,7 +102,7 @@ pub fn create_graph(
             }
           }
 
-          links_2.push(Link {
+          filtred_links.push(Link {
             normalized_name: name,
             ..(*link).clone()
           })
@@ -94,34 +110,53 @@ pub fn create_graph(
       }
     }
 
-    graph_draft.push((path.clone(), links_2));
+    graph_draft_v1.push((path.clone(), filtred_links.clone()));
+    graph_draft_v2.insert(path, filtred_links);
   }
 
-  let mut graph: NoteGraph<String, (), Link> = NoteGraph {
-    nodes: NoteGraph::from(""),
-    adjacency: (),
-  };
-  // TODO -> up
+  // make edges from links
+  for (path, links) in graph_draft_v1.iter() {
+    // TODO rewrite to graph_draft_v2
+    for link in links.iter() {
+      graph.nodes.insert(
+        link.normalized_name.clone(),
+        LinkNode {
+          id: link.normalized_name.clone(),
+          is_image: link.is_image,
+        },
+      );
 
-  // make nodes from paths
-  for path in pathes {
-    // normalize name
-    let mut name = path.clone();
-    if path.starts_with("./") {
-      name = path[2..].to_string();
+      match graph.adjacency.get::<String>(path) {
+        Some(adjacents) => {
+          let mut new_adjacents = adjacents.clone();
+          new_adjacents.push(Adjacement(
+            link.normalized_name.clone(),
+            LinkEdge {
+              link_type: link.r#type,
+              text: link.text.clone(),
+              title: link.title.clone(),
+            },
+          ));
+          graph.adjacency.insert(path.clone(), new_adjacents.clone());
+        }
+        None => {
+          graph.adjacency.insert(
+            path.clone(),
+            vec![Adjacement(
+              link.normalized_name.clone(),
+              LinkEdge {
+                link_type: link.r#type,
+                text: link.text.clone(),
+                title: link.title.clone(),
+              },
+            )],
+          );
+        }
+      }
     }
-
-    graph
-      .nodes
-      .insert(name.clone(), Node { link: path.clone() });
   }
 
-  // for node in graph_draft.iter() {
-  //   for link in node.1.iter() {
-  //     graph.nodes.insert(link.destination.clone(), link.clone());
-  //     graph.adjacency.insert(link.destination.clone(), vec![]);
-  //   }
-  // }
+  return graph;
 }
 
 // TODO front matter (make option)
@@ -180,22 +215,6 @@ pub fn links_from_path(path: &str) -> Vec<Link> {
   links
 }
 
-// pub fn local_links_by_path(path: &str) -> Vec<String> {
-//   links_from_path(path)
-//     .iter()
-//     .filter(|link| !link.starts_with("http://") && !link.starts_with("https://"))
-//     .map(|link| link.to_owned())
-//     .collect::<Vec<String>>()
-// }
-
-// pub fn url_by_path(path: &str) -> Vec<String> {
-//   links_from_path(path)
-//     .iter()
-//     .filter(|link| link.starts_with("http://") || link.starts_with("https://"))
-//     .map(|link| link.to_owned())
-//     .collect::<Vec<String>>()
-// }
-
 #[cfg(test)]
 mod test {
   use std::{fs, path::Path};
@@ -203,11 +222,18 @@ mod test {
   use markdown_parser::{read_file, Error};
   use pulldown_cmark::{Event, Parser, Tag};
 
-  use crate::lib::markdown::work_space;
+  use crate::features::note_graph::read::work_space;
 
   use super::links_from_path;
 
   const MARKDOWN_TEST: &str = "/assets/markdown/sample.md";
+
+  #[test]
+  fn graph_from_one_file() {
+    let pathes = vec![MARKDOWN_TEST.to_string()];
+    let graph = super::create_graph_default_options(pathes.iter());
+    println!("{:#?}", graph);
+  }
 
   #[test]
   fn markdown_rust_test() -> Result<(), Error> {
