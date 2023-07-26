@@ -37,7 +37,7 @@ pub trait Graph<'a> {
   fn get_edge(&self, id: Self::EdgeId) -> &'a Self::EdgeData;
   fn get_edge_mut(&mut self, id: Self::EdgeId) -> &'a mut Self::EdgeData;
 
-  /// Get incident nodes of the edge
+  /// Get incident nodes of an edge
   fn get_edge_incidents(&self, edge_id: Self::EdgeId) -> EdgeIncidents<Self::NodeId>;
 
   /// Adds a node to the graph

@@ -3,18 +3,31 @@
 use egui::{Color32, Stroke};
 use std::marker::PhantomData;
 
+use super::note_graph_ui::{NoteEdgeData, NoteNodeData};
 use crate::lib::graph::{EdgeIncidents, Graph};
 
 #[derive(PartialEq, Eq)]
-pub struct NoteGraph;
+pub struct MockGraph;
 
 #[derive(PartialOrd, PartialEq, Eq, Hash, Clone, Copy)]
 pub struct NodeId(usize);
+
 #[derive(PartialEq, Clone, Copy)]
 pub struct NodeData {
-  pub radius: f32,
-  pub fill: Color32,
-  pub stroke: Stroke,
+  radius: f32,
+  fill: Color32,
+  stroke: Stroke,
+}
+impl NoteNodeData for NodeData {
+  fn fill(&self) -> Color32 {
+    self.fill
+  }
+  fn stroke(&self) -> Stroke {
+    self.stroke
+  }
+  fn radius(&self) -> f32 {
+    self.radius
+  }
 }
 
 pub struct NodeIter<'a> {
@@ -29,8 +42,14 @@ pub struct NodeIterMut<'a> {
 pub struct EdgeId(pub NodeId, pub NodeId);
 #[derive(PartialEq, Clone, Copy)]
 pub struct EdgeData {
-  pub stroke: Stroke,
+  stroke: Stroke,
 }
+impl NoteEdgeData for EdgeData {
+  fn stroke(&self) -> Stroke {
+    self.stroke
+  }
+}
+
 pub struct EdgeIter<'a> {
   index: usize,
   _marker: &'a PhantomData<()>,
@@ -122,7 +141,7 @@ impl<'a> Iterator for EdgeIterMut<'a> {
   }
 }
 
-impl<'a> Graph<'a> for NoteGraph {
+impl<'a> Graph<'a> for MockGraph {
   type NodeId = NodeId;
   type NodeData = NodeData;
 
