@@ -23,16 +23,19 @@ $ ./scripts/build-demo-web.sh --open # also open in browser on http://localhost:
 $ ./scripts/build-demo-web.sh --port 8081 # override default port number
 ```
 ## Todo
-- [ ] configuration engine (from a config file/environment variables/CLI options)
-	- [ ] theming (set background, foreground, primary accent, secondary accent)
+- [x] configuration engine (from a config file/environment variables/CLI options)
+	- [x] theming (set background, foreground, primary accent, secondary accent)
 - [ ] graph renderer for notes
-    - [ ] `Graph` trait
-        - [ ] `iter_adjacent(node) -> Iterator<Item = (EdgeId, &EdgeData)>`
+    - [x] `Graph` trait
     - [ ] mapper `[String] -> impl Graph` (note contents to graph)
-    - [ ] basic renderer of specific instance of Graph
-    - [ ] force-based placement
+    - [x] basic renderer of specific instance of Graph
+    - [x] force-based placement
     - [ ] hand edits/corrections to force-placed nodes, saved in JSON format in *notes directory* inside a hidden *metadata directory*
 - [ ] live-updated markdown renderer (github-flavored markdown)
     - [ ] mermaid (or at least some other) diagram support
 - [ ] event socket (send app events): send clicked links/graph notes (markdown file names/links), etc: for extendability (external editor, etc)
 - [ ] command socket (receive commands): open notes by name, edit note contents (re-render), etc: for extendability (external editor, etc)
+
+## Acknowledgements
+
+- <https://github.com/JohnScience> for theoretical help with Rust
