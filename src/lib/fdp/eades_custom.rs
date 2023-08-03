@@ -1,21 +1,27 @@
 use crate::lib::graph::{EdgeIncidents, Graph};
 use egui::Vec2;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::hash::Hash;
 use std::ops::{Deref, DerefMut};
 
 /// Force-directed placement data
+#[derive(Serialize, Deserialize)]
 pub struct NodeFdpData {
   pub force: Vec2,
   pub pos: Vec2,
 }
 
 pub type NodePositionsHashMap<NodeId> = HashMap<NodeId, NodeFdpData>;
-pub struct NodePositions<NodeId: Hash + Eq>(pub NodePositionsHashMap<NodeId>);
+
+#[derive(Serialize, Deserialize)]
+pub struct NodePositions<NodeId>(pub NodePositionsHashMap<NodeId>)
+where
+  NodeId: Hash + Eq;
 
 impl<NodeId> Deref for NodePositions<NodeId>
 where
-  NodeId: Hash + Eq,
+  for<'a> NodeId: Hash + Eq + Serialize + Deserialize<'a>,
 {
   type Target = NodePositionsHashMap<NodeId>;
   fn deref(&self) -> &Self::Target {
@@ -24,7 +30,7 @@ where
 }
 impl<NodeId> DerefMut for NodePositions<NodeId>
 where
-  NodeId: Hash + Eq,
+  for<'a> NodeId: Hash + Eq + Serialize + Deserialize<'a>,
 {
   fn deref_mut(&mut self) -> &mut Self::Target {
     &mut self.0
@@ -39,7 +45,7 @@ pub fn apply_forces<NodeId, EdgeId>(
   graph: &impl for<'a> Graph<'a, NodeId = NodeId, EdgeId = EdgeId>,
   node_positions: &mut NodePositions<NodeId>,
 ) where
-  NodeId: Hash + Eq,
+  for<'a> NodeId: Hash + Eq + Serialize + Deserialize<'a>,
 {
   // apply force towards center
   for (node_id, ..) in graph.iter_nodes() {
