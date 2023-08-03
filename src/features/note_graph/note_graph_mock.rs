@@ -1,6 +1,7 @@
 #![allow(clippy::suboptimal_flops)]
 
 use egui::{Color32, Stroke};
+use serde::{Deserialize, Serialize};
 use std::marker::PhantomData;
 
 use super::note_graph_ui::{NoteEdgeData, NoteNodeData};
@@ -9,7 +10,7 @@ use crate::lib::graph::{EdgeIncidents, Graph};
 #[derive(PartialEq, Eq)]
 pub struct MockGraph;
 
-#[derive(PartialOrd, PartialEq, Eq, Hash, Clone, Copy)]
+#[derive(Serialize, Deserialize, PartialOrd, PartialEq, Eq, Hash, Clone, Copy)]
 pub struct NodeId(usize);
 
 #[derive(PartialEq, Clone, Copy)]

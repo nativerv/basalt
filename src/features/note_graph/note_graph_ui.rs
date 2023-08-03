@@ -124,6 +124,39 @@ impl NoteGraphUi {
   }
 
   fn options_ui(&mut self, ui: &mut Ui) {
+    if ui.button("Save").clicked() {
+      use std::io::Write;
+      // use std::time::Duration;
+      // std::thread::sleep(Duration::from_secs(10));
+      let mut file = std::fs::OpenOptions::new()
+        .create(true)
+        .truncate(true)
+        .write(true)
+        .open("basalt-graph.json")
+        .expect("expected file to be openable");
+      let json = serde_json::to_string_pretty(&self.node_positions).unwrap();
+      println!("{json}");
+      file
+        .write_all(json.as_bytes())
+        .expect("expected file to be writeable");
+    }
+    if ui.button("Load").clicked() {
+      use std::io::Read;
+      let mut file = std::fs::File::options()
+        .read(true)
+        .open("basalt-graph.json")
+        .expect("expected file to be openable (exist)");
+      let text = {
+        let mut buf = String::new();
+        file
+          .read_to_string(&mut buf)
+          .expect("expected file to be readable");
+        buf
+      };
+      let node_positions = serde_json::from_str::<eades_custom::NodePositions<NodeId>>(&text)
+        .expect("expected valid json");
+      self.node_positions = node_positions;
+    }
     if ui.button("Step").clicked() {
       eades_custom::apply_forces(&self.note_graph, &mut self.node_positions);
       for (id, _node) in self.note_graph.iter_nodes() {
