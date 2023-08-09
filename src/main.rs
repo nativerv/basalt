@@ -36,9 +36,7 @@ fn main() -> Result<(), eframe::Error> {
     APP_TITLE,
     options,
     // TODO: look at what you can do with the `CreationContext`
-    // NOTE: one of the things that you can do is to implement
-    // and assign set custom `Storage`:
-    // https://discord.com/channels/900275882684477440/904461220592119849/1128120151137583155
+    // NOTE: `Storage` is pretty useless for our purposes.
     Box::new(|_creation_context| Box::<BasaltApp>::default()),
   )
 }
