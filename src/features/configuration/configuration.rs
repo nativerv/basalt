@@ -1,3 +1,4 @@
+use crate::features::veins::VeinId;
 use egui::Color32;
 use serde::{Deserialize, Serialize};
 use serde_json::{self, Map, Value};
@@ -19,6 +20,8 @@ pub struct Configuration {
   pub primary_color: Color32,
   #[serde(default)]
   pub secondary_color: Color32,
+  #[serde(default)]
+  pub veins: Vec<VeinId>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
@@ -29,6 +32,7 @@ struct ConfigurationOptional {
   pub foreground_color: Option<Color32>,
   pub primary_color: Option<Color32>,
   pub secondary_color: Option<Color32>,
+  pub veins: Option<Vec<VeinId>>,
 }
 
 impl Default for Configuration {
@@ -40,6 +44,7 @@ impl Default for Configuration {
       foreground_color: Color32::from_rgb(255, 255, 255),
       primary_color: Color32::from_rgb(255, 255, 255),
       secondary_color: Color32::from_rgb(255, 255, 255),
+      veins: Vec::new(),
     }
   }
 }
@@ -142,6 +147,7 @@ mod test {
       background_color: Color32::from_rgb(255, 255, 255),
       primary_color: Color32::from_rgb(255, 0, 255),
       secondary_color: Color32::from_rgb(0, 167, 0),
+      veins: Vec::new(),
     };
     let read_config = Configuration::read_configuration(
       &mut File::open("tests/configuration/first_config.json").expect("Could not open file"),
@@ -160,6 +166,7 @@ mod test {
       background_color: Color32::from_rgb(255, 255, 255),
       primary_color: Color32::from_rgb(255, 0, 255),
       secondary_color: Color32::from_rgb(0, 167, 0),
+      veins: Vec::new(),
     };
     let read_config = Configuration::read_configuration(
       &mut File::open("tests/configuration/first_config.json").expect("Could not open file"),
@@ -178,6 +185,7 @@ mod test {
       foreground_color: Color32::from_rgb(0, 0, 0),
       primary_color: Color32::from_rgb(0, 0, 0),
       secondary_color: Color32::from_rgb(0, 0, 0),
+      veins: Vec::new(),
     };
     crate::lib::test::with_test_dir(|temp_dir| {
       let first_config_file = temp_dir.join("first_config_file.json");

@@ -1,16 +1,17 @@
 //! Basalt library
 
+#![feature(stmt_expr_attributes)]
+// Allow adequate module structure
+#![allow(clippy::module_inception)]
+// Allow disabling clippy for expressions etc.
 //#![allow(clippy::missing_errors_doc)]
 #![warn(clippy::nursery)]
 // Lints
 // TODO: warn more allowed-by-default lints
 #![warn(clippy::nursery)]
 #![warn(missing_docs)]
-// Allow adequate module structure
-#![allow(clippy::module_inception)]
-// Allow disabling clippy for expressions etc.
-#![feature(stmt_expr_attributes)]
-#![feature(lint_reasons)]
+// TODO: add these
+//#![warn(clippy::unwrap_used)]
 
 mod basalt;
 mod features;
