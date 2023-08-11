@@ -2,7 +2,7 @@ use eframe::egui;
 
 use crate::features::configuration::Configuration;
 use crate::features::note_graph::NoteGraphUi;
-use crate::features::veins::{Vein, VeinId};
+use crate::features::veins::{Vein, VeinId, Veins};
 use directories::ProjectDirs;
 use std::collections::HashMap;
 use std::fs::File;
@@ -14,7 +14,7 @@ pub struct BasaltApp {
   configuration: Configuration,
 
   // A list of veins known to the this Basalt instance. The head is the current vein.
-  veins: HashMap<VeinId, Vein>,
+  veins: Veins,
 
   note_graph_ui: NoteGraphUi,
 }
@@ -44,10 +44,12 @@ impl Default for BasaltApp {
 
     Self {
       basalt_dirs,
-      //configuration_path,
+      veins: Veins::load_from_config(&configuration),
       configuration,
-      veins: HashMap::new(),
       note_graph_ui: Default::default(),
+      // Doesn't compile if put here instead of above LUL
+      // rust moment
+      //veins: Veins::load_from_config(&configuration),
     }
   }
 }

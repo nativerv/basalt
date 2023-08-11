@@ -8,6 +8,7 @@ type Note = String;
 /// Veins are a name for Basalt's note repositories.
 /// Example: ~/Documents/personal-notes
 /// Example: ~/Documents/work-notes
+#[derive(Debug)]
 pub enum Vein {
   Native {
     path: PathBuf,
@@ -19,39 +20,34 @@ pub enum Vein {
   Remote {},
 }
 
+/// Public methods
 impl Vein {
   pub fn new_native(path: &Path) -> Self {
-    use std::io::Read;
     use walkdir::WalkDir;
 
     let notes = WalkDir::new(path)
       .into_iter()
-      .filter_map(|maybe_entry| maybe_entry.ok())
+      .filter_map(Result::ok)
       .filter(|entry| entry.path().is_file())
       .map(|entry| {
-        let path = entry.path();
-        let contents = File::options()
-          .read(true)
-          .open(path)
-          .map(|mut file| {
-            let mut buf = Note::new();
-            // TODO: (file read) (incorrect unicode) probably should do something about the error
-            // (otherwise files that failed to be parsed will appear empty
-            // without notice)
-            file
-              .read_to_string(&mut buf)
-              .map(|_| buf)
-              .unwrap_or_default()
-          })
-          // TODO: (file read) probably should do something about the error
+        use crate::lib::path::PathExt;
+        let prefix = path.canonicalize_unchecked();
+        let note_path = entry.path().canonicalize_unchecked();
+        let note_contents = std::fs::read_to_string(&note_path)
+          // FIXME: (file read) probably should do something about the error
           // (otherwise files that failed to be read will appear empty
           // without notice)
           .unwrap_or_default();
-        // FIXME: figure out what's all this (path to string) bullshit is about
-        (
-          path.as_os_str().to_str().unwrap_or_default().to_owned(),
-          contents,
-        )
+
+        // FIXME: this error also
+        let note_id = note_path
+          .strip_prefix(&prefix)
+          .expect("can strip prefix")
+          .to_str()
+          .expect("expected path to be a valid unicode")
+          .to_owned();
+
+        (note_id, note_contents)
       })
       .collect::<HashMap<NoteId, Note>>();
 
@@ -61,7 +57,7 @@ impl Vein {
     }
   }
 
-  fn iter<'a>(&'a self) -> Iter<'a> {
+  pub fn iter<'a>(&'a self) -> Iter<'a> {
     use Vein::*;
     match self {
       Native { notes, .. } => Iter::Native {
@@ -72,22 +68,27 @@ impl Vein {
     }
   }
 
-  fn get_note<Q>(&self, name: Q) -> Option<&'_ str>
+  pub fn get_note<Q>(&self, name: Q) -> Option<&'_ str>
   where
-    Q: std::borrow::Borrow<str> + std::hash::Hash + std::cmp::Eq,
+    Q: std::borrow::Borrow<str>,
   {
     use Vein::*;
     match self {
       Native { notes, .. } => {
         // let path = path.to_str().map(|str| std::borrow::Cow::from(str)).unwrap_or_else(|| path.to_string_lossy());
-        notes
-          .get(name.borrow())
-          .map(|string_ref| string_ref.as_str())
+        notes.get(name.borrow()).map(String::as_str)
       }
-      Web {} => unimplemented!(),
-      Remote {} => unimplemented!(),
+      Web { .. } => unimplemented!(),
+      Remote { .. } => unimplemented!(),
     }
   }
+}
+
+/// Private methods
+impl Vein {
+  // fn normalize_path() -> Option<&Path> {
+  //
+  // }
 }
 
 pub enum Iter<'a> {
@@ -123,28 +124,27 @@ mod tests {
   use super::*;
 
   #[test]
-  fn vein_native__notes___gets_all_files() {
+  fn vein_native__iter___gets_all_files() {
     let vein = Vein::new_native(Path::new("./tests/notes"));
 
     let expected = [
-      "./tests/notes/basalt.md",
-      "./tests/notes/bio.md",
-      "./tests/notes/build-tool.md",
-      "./tests/notes/cargo.md",
-      "./tests/notes/diary/20230803101243-walkdir.md",
-      "./tests/notes/index.md",
-      "./tests/notes/interests.md",
-      "./tests/notes/internets.md",
-      "./tests/notes/me.md",
-      "./tests/notes/note-taking-software.md",
-      "./tests/notes/programming-language.md",
-      "./tests/notes/programming.md",
-      "./tests/notes/rust.md",
-      "./tests/notes/software.md",
-      "./tests/notes/wikipedia.md",
+      "basalt.md",
+      "bio.md",
+      "build-tool.md",
+      "cargo.md",
+      "diary/20230803101243-walkdir.md",
+      "index.md",
+      "interests.md",
+      "internets.md",
+      "me.md",
+      "note-taking-software.md",
+      "programming-language.md",
+      "programming.md",
+      "rust.md",
+      "software.md",
+      "wikipedia.md",
     ]
-    .as_slice()
-    .iter();
+    .as_slice();
 
     let mut note_paths = vein
       .iter()
@@ -152,13 +152,19 @@ mod tests {
       .collect::<Vec<&str>>();
     note_paths.sort();
 
-    assert!(expected.eq(note_paths.iter()));
+    assert!(
+      expected.iter().eq(note_paths.iter()),
+      "expected: {:#?}, was: {:#?}",
+      expected.iter(),
+      note_paths.iter()
+    );
   }
   #[test]
-  fn vein_native__notes___gets_file_contents() {
+  fn vein_native__get_note___gets_file_contents() {
     let vein = Vein::new_native(Path::new("./tests/notes"));
 
-    let note_contents = vein.get_note("./tests/notes/basalt.md").unwrap();
+    dbg!(&vein);
+    let note_contents = vein.get_note("basalt.md").unwrap();
 
     let expected = r#"# Basalt is an igneous rock.
 
@@ -173,9 +179,7 @@ mod tests {
 
 #[cross-platform](cross-platform.md) #[rust](rust.md) #[crate](crate.md)
 "#;
-    let note_contents = vein
-      .get_note("./tests/notes/diary/20230803101243-walkdir.md")
-      .unwrap();
+    let note_contents = vein.get_note("diary/20230803101243-walkdir.md").unwrap();
     assert_eq!(expected, note_contents);
   }
 }

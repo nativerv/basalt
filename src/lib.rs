@@ -22,6 +22,7 @@ mod lib {
 
   #[cfg(test)]
   pub mod test;
+  pub mod path;
 }
 pub use basalt::BasaltApp;
 
