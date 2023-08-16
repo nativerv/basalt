@@ -4,20 +4,26 @@ use std::path::{Path, PathBuf};
 
 type NoteId = String;
 type Note = String;
+type Notes = HashMap<NoteId, Note>;
 
 /// Veins are a name for Basalt's note repositories.
 /// Example: ~/Documents/personal-notes
 /// Example: ~/Documents/work-notes
 #[derive(Debug)]
-pub enum Vein {
+pub enum Kind {
   Native {
     path: PathBuf,
-    notes: HashMap<NoteId, Note>,
   },
   #[allow(dead_code)]
   Web {},
   #[allow(dead_code)]
   Remote {},
+}
+
+#[derive(Debug)]
+pub struct Vein {
+  kind: Kind,
+  notes: Notes,
 }
 
 /// Public methods
@@ -49,19 +55,21 @@ impl Vein {
 
         (note_id, note_contents)
       })
-      .collect::<HashMap<NoteId, Note>>();
+      .collect::<Notes>();
 
-    Self::Native {
-      path: path.to_owned(),
+    Self {
+      kind: Kind::Native {
+        path: path.to_owned(),
+      },
       notes,
     }
   }
 
   pub fn iter<'a>(&'a self) -> Iter<'a> {
-    use Vein::*;
-    match self {
-      Native { notes, .. } => Iter::Native {
-        notes_iter: notes.iter(),
+    use Kind::*;
+    match &self.kind {
+      Native { .. } => Iter::Native {
+        notes_iter: self.notes.iter(),
       },
       Web { .. } => unimplemented!(),
       Remote { .. } => unimplemented!(),
@@ -72,11 +80,10 @@ impl Vein {
   where
     Q: std::borrow::Borrow<str>,
   {
-    use Vein::*;
-    match self {
-      Native { notes, .. } => {
-        // let path = path.to_str().map(|str| std::borrow::Cow::from(str)).unwrap_or_else(|| path.to_string_lossy());
-        notes.get(name.borrow()).map(String::as_str)
+    use Kind::*;
+    match &self.kind {
+      Native { .. } => {
+        self.notes.get(name.borrow()).map(String::as_str)
       }
       Web { .. } => unimplemented!(),
       Remote { .. } => unimplemented!(),
