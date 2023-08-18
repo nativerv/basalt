@@ -32,7 +32,13 @@ impl Veins {
     configuration
       .veins
       .iter()
-      .map(|vein_id| (VeinId(vein_id.to_path_buf()), Vein::new_native(vein_id)))
+      // FIXME: handle ignored error (load vein)
+      // (otherwise invalid veins will be ignored)
+      .filter_map(|vein_id| {
+        Vein::new_native(vein_id)
+          .map(|vein| (VeinId(vein_id.to_path_buf()), vein))
+          .ok()
+      })
       .collect::<VeinsHashMap>()
       .into()
   }

@@ -2,9 +2,8 @@ use eframe::egui;
 
 use crate::features::configuration::Configuration;
 use crate::features::note_graph::NoteGraphUi;
-use crate::features::veins::{Vein, VeinId, Veins};
+use crate::features::veins::Veins;
 use directories::ProjectDirs;
-use std::collections::HashMap;
 use std::fs::File;
 
 /// Global Basalt state
