@@ -1,7 +1,8 @@
 use egui::{
   text::LayoutJob, Color32, FontFamily, FontId, Label, RichText, Stroke, TextFormat, TextStyle, Ui,
 };
-use pulldown_cmark::Event;
+use pulldown_cmark::{HeadingLevel, Event, Tag};
+
 
 use crate::features::note_preview::NotePreview;
 
@@ -10,7 +11,7 @@ pub struct NotePreviewUi {
   font_size: f32,
 }
 
-struct Linl {
+struct Link {
   is_link: bool,
   url: String,
   text: String}
@@ -50,32 +51,32 @@ impl NotePreviewUi {
     for event in &mut self.note.parsing_note() {
       match event {
         Event::Start(tag) => match tag {
-          pulldown_cmark::Tag::Heading(level, _, _) => {
+          Tag::Heading(level, _, _) => {
             current_text_style.font_id.size = match level {
-              pulldown_cmark::HeadingLevel::H1 => self.font_size + 16.0,
-              pulldown_cmark::HeadingLevel::H2 => self.font_size + 12.0,
-              pulldown_cmark::HeadingLevel::H3 => self.font_size + 8.0,
-              pulldown_cmark::HeadingLevel::H4 => self.font_size + 6.0,
-              pulldown_cmark::HeadingLevel::H5 => self.font_size + 4.0,
-              pulldown_cmark::HeadingLevel::H6 => self.font_size + 2.0,
+              HeadingLevel::H1 => self.font_size + 16.0,
+              HeadingLevel::H2 => self.font_size + 12.0,
+              HeadingLevel::H3 => self.font_size + 8.0,
+              HeadingLevel::H4 => self.font_size + 6.0,
+              HeadingLevel::H5 => self.font_size + 4.0,
+              HeadingLevel::H6 => self.font_size + 2.0,
             };
           }
-          pulldown_cmark::Tag::Paragraph => {
+          Tag::Paragraph => {
             current_text_style.font_id.size = self.font_size;
           }
-          pulldown_cmark::Tag::CodeBlock(_) => {
+          Tag::CodeBlock(_) => {
             is_code = true;
           }
-          pulldown_cmark::Tag::Strong => {
+          Tag::Strong => {
             current_text_style.color = ui.style().visuals.strong_text_color();
           }
-          pulldown_cmark::Tag::Emphasis => {
+          Tag::Emphasis => {
             current_text_style.italics = true;
           }
-          pulldown_cmark::Tag::Strikethrough => {
+          Tag::Strikethrough => {
             current_text_style.strikethrough = Stroke::new(1.0, code_text_style.color);
           }
-          pulldown_cmark::Tag::Link(link_type, url, _) => {
+          Tag::Link(link_type, url, _) => {
             is_link = true;
           }
 
@@ -84,25 +85,25 @@ impl NotePreviewUi {
           }
         },
         Event::End(tag) => match tag {
-          pulldown_cmark::Tag::Heading(_, _, _) => {
+          Tag::Heading(_, _, _) => {
             current_text_style.font_id.size = self.font_size;
           }
-          pulldown_cmark::Tag::Paragraph => {
+          Tag::Paragraph => {
             layout_job.append("\n", 0.0, current_text_style.clone());
           }
-          pulldown_cmark::Tag::Strong => {
+          Tag::Strong => {
             current_text_style.color = ui.style().visuals.text_color();
           }
-          pulldown_cmark::Tag::Emphasis => {
+          Tag::Emphasis => {
             current_text_style.italics = false;
           }
-          pulldown_cmark::Tag::Strikethrough => {
+          Tag::Strikethrough => {
             current_text_style.strikethrough = Stroke::NONE;
           }
-          pulldown_cmark::Tag::CodeBlock(_) => {
+          Tag::CodeBlock(_) => {
             is_code = false;
           }
-          pulldown_cmark::Tag::Link(link_type, url, _) => {
+          Tag::Link(link_type, url, _) => {
             is_link = false;
           }
           _ => {
