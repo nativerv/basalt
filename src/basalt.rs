@@ -8,7 +8,6 @@ use std::fs::File;
 
 /// Global Basalt state
 pub struct BasaltApp {
-  basalt_dirs: ProjectDirs,
   //configuration_path: PathBuf,
   configuration: Configuration,
 
@@ -18,10 +17,33 @@ pub struct BasaltApp {
   note_graph_ui: NoteGraphUi,
 }
 
+impl BasaltApp {
+  const CONFIG_FILE_NAME: &str = "basalt.json";
+
+  fn from_configuration(configuration: Configuration) -> Self {
+    let veins = Veins::from_configuration(&configuration);
+    // FIXME: only one (first) Vein is taken it panics if there is none
+    let note_graph_ui = NoteGraphUi::new(
+      veins
+        .iter()
+        .next()
+        .map(|(_, vein)| std::rc::Rc::clone(vein))
+        .unwrap_or_else(|| panic!("reeeeeeeee!")),
+    );
+    Self {
+      veins,
+      configuration,
+      note_graph_ui,
+    }
+  }
+}
+
 impl Default for BasaltApp {
   fn default() -> Self {
     // WARNING(portability): mobile
 
+    // FIXME: maybe this should be global? Or fork the `directories` and add constructor into
+    // custom dirs for `BasaltApp:;from_configuration` and tests?
     let basalt_dirs = ProjectDirs::from("com", "basalt", "basalt").unwrap_or_else(|| {
       const MESSAGE: &str =
         "could not retrieve valid home directory path for your OS: required for config dir";
@@ -30,7 +52,7 @@ impl Default for BasaltApp {
       panic!("{MESSAGE}")
     });
 
-    let configuration_path = basalt_dirs.config_dir().join("basalt.json");
+    let configuration_path = basalt_dirs.config_dir().join(BasaltApp::CONFIG_FILE_NAME);
 
     let configuration = File::options()
       .read(true)
@@ -41,15 +63,7 @@ impl Default for BasaltApp {
       // FIXME: error presentation
       .unwrap_or_default();
 
-    Self {
-      basalt_dirs,
-      veins: Veins::load_from_config(&configuration),
-      configuration,
-      note_graph_ui: Default::default(),
-      // Doesn't compile if put here instead of above LUL
-      // rust moment
-      //veins: Veins::load_from_config(&configuration),
-    }
+    Self::from_configuration(configuration)
   }
 }
 

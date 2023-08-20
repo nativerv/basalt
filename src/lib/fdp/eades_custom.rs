@@ -1,8 +1,10 @@
+use crate::features::veins::vein;
 use crate::lib::graph::{EdgeIncidents, Graph};
 use egui::Vec2;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::hash::Hash;
+use std::io;
 use std::ops::{Deref, DerefMut};
 
 /// Force-directed placement data
@@ -18,6 +20,23 @@ pub type NodePositionsHashMap<NodeId> = HashMap<NodeId, NodeFdpData>;
 pub struct NodePositions<NodeId>(pub NodePositionsHashMap<NodeId>)
 where
   NodeId: Hash + Eq;
+
+impl<NodeId> vein::Store for NodePositions<NodeId>
+where
+  for<'a> NodeId: Hash + Eq + Serialize + Deserialize<'a>,
+{
+  type Error = io::Error;
+
+  fn vein_config_name() -> &'static str {
+    "graph.json"
+  }
+  fn serialize(&self) -> Result<String, io::Error> {
+    Ok(serde_json::to_string(self)?)
+  }
+  fn deserialize(s: impl AsRef<str>) -> Result<Self, io::Error> {
+    Ok(serde_json::from_str(s.as_ref())?)
+  }
+}
 
 impl<NodeId> Deref for NodePositions<NodeId>
 where

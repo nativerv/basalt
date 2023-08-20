@@ -3,10 +3,8 @@ use std::collections::HashMap;
 use std::io;
 use std::path::{Path, PathBuf};
 
-const VEIN_CONFIG_FOLDER: &str = ".basalt";
-
 /// Represents a data type that can be stored in a Vein's config storage.
-trait Store {
+pub trait Store {
   type Error: Into<io::Error>;
 
   fn vein_config_name() -> &'static str;
@@ -42,6 +40,8 @@ pub struct Vein {
 
 /// Public methods
 impl Vein {
+  const CONFIG_DIRECTORY: &str = ".basalt";
+
   pub fn new_native(path: &Path) -> io::Result<Self> {
     use walkdir::WalkDir;
 
@@ -122,7 +122,8 @@ impl Vein {
     match &self.kind {
       Native { path, .. } => {
         let config_file_name = Path::new(<T as Store>::vein_config_name());
-        let text = std::fs::read_to_string(path.join(VEIN_CONFIG_FOLDER).join(config_file_name))?;
+        let text =
+          std::fs::read_to_string(path.join(Vein::CONFIG_DIRECTORY).join(config_file_name))?;
         Ok(Store::deserialize(text)?)
       }
       Web { .. } => unimplemented!(),
@@ -138,10 +139,10 @@ impl Vein {
       Native { path, .. } => {
         let config_file_name = Path::new(<T as Store>::vein_config_name());
         let json = Store::serialize(value)?;
-        let config_file_path = path.join(VEIN_CONFIG_FOLDER).join(config_file_name);
+        let config_file_path = path.join(Vein::CONFIG_DIRECTORY).join(config_file_name);
         let config_file_dir_path = &config_file_path
           .parent()
-          .expect("invariant: should be at least Vein's root folder, because it's joined with `VEIN_CONFIG_FOLDER`");
+          .expect("invariant: should be at least Vein's root folder, because it's joined with `Vein::CONFIG_DIRECTORY`");
         std::fs::create_dir_all(config_file_dir_path)?;
         Ok(std::fs::write(config_file_path, json)?)
       }
@@ -287,7 +288,7 @@ mod tests {
     let actual = crate::lib::test::with_test_dir(|tmp_dir| {
       let vein = Vein::new_native(&tmp_dir)?;
       let expected_file_path = tmp_dir
-        .join(VEIN_CONFIG_FOLDER)
+        .join(Vein::CONFIG_DIRECTORY)
         .join("data")
         .join("data.json");
       std::fs::create_dir_all(expected_file_path.parent().expect("parent"))?;
@@ -307,11 +308,13 @@ mod tests {
       let vein = Vein::new_native(&tmp_dir)?;
       vein.write_config_value(&expected)?;
       let config_file_path = tmp_dir
-        .join(VEIN_CONFIG_FOLDER)
+        .join(Vein::CONFIG_DIRECTORY)
         .join("data")
         .join("data.json");
       assert!(config_file_path.is_file());
-      Ok(<Data as Store>::deserialize(&std::fs::read_to_string(config_file_path)?)?)
+      Ok(<Data as Store>::deserialize(&std::fs::read_to_string(
+        config_file_path,
+      )?)?)
     })?;
 
     assert_eq!(expected, actual);

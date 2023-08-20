@@ -1,13 +1,17 @@
 use crate::features::note_graph::note_graph_mock::{MockGraph, NodeId, NODES};
+use crate::features::veins::Vein;
 use crate::lib::fdp::eades_custom;
 use crate::lib::graph::{EdgeIncidents, Graph};
 use egui::{containers::*, *};
 use epaint::CircleShape;
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::f32::consts::TAU;
+use std::rc::Rc;
 
 /// NoteGraph ui state
 pub struct NoteGraphUi {
+  vein: Rc<RefCell<Vein>>,
   node_positions: eades_custom::NodePositions<NodeId>,
   note_graph: MockGraph,
   width: f32,
@@ -33,8 +37,8 @@ struct NodeDrag {
   node_id: NodeId,
 }
 
-impl Default for NoteGraphUi {
-  fn default() -> Self {
+impl NoteGraphUi {
+  pub fn new(vein: Rc<RefCell<Vein>>) -> Self {
     let note_graph = MockGraph;
 
     // Initial node placement: a circle
@@ -59,6 +63,7 @@ impl Default for NoteGraphUi {
     );
 
     Self {
+      vein,
       node_positions,
       note_graph,
       width: Default::default(),
@@ -125,37 +130,14 @@ impl NoteGraphUi {
 
   fn options_ui(&mut self, ui: &mut Ui) {
     if ui.button("Save").clicked() {
-      use std::io::Write;
-      // use std::time::Duration;
-      // std::thread::sleep(Duration::from_secs(10));
-      let mut file = std::fs::OpenOptions::new()
-        .create(true)
-        .truncate(true)
-        .write(true)
-        .open("basalt-graph.json")
-        .expect("expected file to be openable");
-      let json = serde_json::to_string_pretty(&self.node_positions).unwrap();
-      println!("{json}");
-      file
-        .write_all(json.as_bytes())
-        .expect("expected file to be writeable");
+      self
+        .vein
+        .borrow()
+        .write_config_value(&self.node_positions)
+        .unwrap()
     }
     if ui.button("Load").clicked() {
-      use std::io::Read;
-      let mut file = std::fs::File::options()
-        .read(true)
-        .open("basalt-graph.json")
-        .expect("expected file to be openable (exist)");
-      let text = {
-        let mut buf = String::new();
-        file
-          .read_to_string(&mut buf)
-          .expect("expected file to be readable");
-        buf
-      };
-      let node_positions = serde_json::from_str::<eades_custom::NodePositions<NodeId>>(&text)
-        .expect("expected valid json");
-      self.node_positions = node_positions;
+      self.node_positions = self.vein.borrow().read_config_value().unwrap()
     }
     if ui.button("Step").clicked() {
       eades_custom::apply_forces(&self.note_graph, &mut self.node_positions);
@@ -164,7 +146,12 @@ impl NoteGraphUi {
         *pos += *force;
       }
     }
-    crate::ui::reset_button(ui, self);
+    // NOTE: this bullshit seems to be correct way of doing that. Acquire a clone, pass it to the
+    // closure and have it cloned there when it's called.
+    // Actually can just move cloning inside `NoteGraphUi::new` and change the signature to &Rc,
+    // but that one is more descriptive of what's happening with the Rc
+    let vein_clone = Rc::clone(&self.vein);
+    crate::ui::reset_button_with(ui, self, || NoteGraphUi::new(Rc::clone(&vein_clone)));
   }
 
   fn paint(&mut self, painter: &Painter) {
