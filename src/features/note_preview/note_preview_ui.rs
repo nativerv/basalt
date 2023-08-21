@@ -18,7 +18,6 @@ use crate::lib::images_cache::{self, ImagesCache};
 pub struct NotePreviewUi {
   note: NotePreview,
   font_size: f32,
-  images_cache: ImagesCache,
 }
 
 // Define a struct to represent a link
@@ -79,7 +78,6 @@ impl Default for NotePreviewUi {
     Self {
       font_size: 14.0,
       note: NotePreview::default(),
-      images_cache: ImagesCache::default(),
     }
   }
 }
@@ -324,7 +322,7 @@ impl NotePreviewUi {
       // Render link items
       ItemKind::Link { url, is_image, .. } => {
         if *is_image {
-          let image_bytes = self.images_cache.load_image(url.as_str());
+          let image_bytes = self.note.images_cache.load_image(url.as_str());
           match image_bytes {
             Ok(image_bytes) => {
               let image = RetainedImage::from_image_bytes(url.clone(), &image_bytes);
