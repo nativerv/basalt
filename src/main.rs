@@ -39,6 +39,6 @@ fn main() -> Result<(), eframe::Error> {
     // NOTE: one of the things that you can do is to implement
     // and assign set custom `Storage`:
     // https://discord.com/channels/900275882684477440/904461220592119849/1128120151137583155
-    Box::new(|_creation_context| Box::<BasaltApp>::default()),
+    Box::new(|_creation_context| Box::<BasaltApp>::new(BasaltApp::new())),
   )
 }

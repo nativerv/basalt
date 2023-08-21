@@ -1,11 +1,22 @@
-use crate::features::{note_graph::NoteGraphUi, note_preview::NotePreviewUi};
+use std::{cell::RefCell, rc::Rc};
+
+use crate::features::{note_graph::NoteGraphUi, note_preview::{NotePreviewUi, NoteData}};
 use eframe::egui;
 
 /// Global Basalt state
-#[derive(Default)]
 pub struct BasaltApp {
   note_graph_ui: NoteGraphUi,
   note_preview_ui: NotePreviewUi,
+}
+
+impl BasaltApp {
+    pub fn new() -> Self {
+      let my_str = include_str!("../tests/notes/test_markdown_first.md");
+        Self {
+            note_graph_ui: NoteGraphUi::default(),
+            note_preview_ui: NotePreviewUi::new(Rc::new(RefCell::new(NoteData { markdown_input: my_str.to_string(), images_cache: Default::default() })) ),
+        }
+    }
 }
 
 impl eframe::App for BasaltApp {
