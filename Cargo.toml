@@ -38,6 +38,10 @@ egui = { version = "0.22.0", features = [
   "extra_debug_asserts",
   "serde",
 ] }
+egui_extras = { version = "0.22.0",features = [
+  "image",
+] }
+image = { version = "0.24", features = ["jpeg", "png"] }
 # egui_demo_lib = { version = "0.22.0", features = [
 #   "chrono",
 # ] }
