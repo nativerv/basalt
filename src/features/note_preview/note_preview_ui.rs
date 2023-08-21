@@ -80,7 +80,7 @@ impl NotePreviewUi {
 
   // Render the input area for markdown text
   fn render_markdown_input(&mut self, ui: &mut Ui) {
-      ScrollArea::vertical().show(ui, |ui| {
+      ScrollArea::both().show(ui, |ui| {
           ui.add(
               TextEdit::multiline(&mut self.note.markdown_input)
                   .desired_width(f32::INFINITY)
@@ -121,6 +121,8 @@ impl NotePreviewUi {
                           HeadingLevel::H5 => self.font_size + 4.0,
                           HeadingLevel::H6 => self.font_size + 2.0,
                       };
+                      layout_job.append("\n", 0.0, current_text_style.clone());
+
                   }
                   // Handle paragraph tags
                   Tag::Paragraph => {
@@ -252,7 +254,7 @@ impl NotePreviewUi {
       );
 
       // Render items in a scrollable area
-      ScrollArea::vertical()
+      ScrollArea::both()
           .id_source("renderer")
           .show(ui, |ui| {
               ui.allocate_ui_with_layout(initial_size, layout, |ui| {
