@@ -15,6 +15,8 @@ use crate::features::note_preview::NotePreview;
 pub struct NotePreviewUi {
   note: NotePreview,
   font_size: f32,
+  list_indent_lvl: u8,
+  list_indent_strenght: u8,
 }
 
 // Define a struct to represent a link
@@ -71,6 +73,8 @@ impl Default for NotePreviewUi {
     Self {
       font_size: 14.0,
       note: NotePreview::default(),
+      list_indent_lvl: 0,
+      list_indent_strenght: 4,
     }
   }
 }
@@ -134,6 +138,8 @@ impl NotePreviewUi {
           // Handle paragraph tags
           Tag::Paragraph => {
             current_text_style.font_id.size = self.font_size;
+            layout_job.append("\n", 0.0, current_text_style.clone());
+
           }
           // Handle code block tags
           Tag::CodeBlock(_) => {
@@ -163,9 +169,15 @@ impl NotePreviewUi {
             link.is_image = true;
             is_link = true;
           }
-          Tag::List(..) => {} //TODO handle lists
+          Tag::List(..) => {
+            self.list_indent_lvl += 1;
+          }
           Tag::Item => {
             layout_job.append("\n", 0.0, current_text_style.clone());
+            let str = std::iter::repeat(" ")
+              .take((self.list_indent_lvl * self.list_indent_strenght).into())
+              .collect::<String>();
+            layout_job.append(&str, 0.0, current_text_style.clone());
             items.push(Item::new(layout_job, ItemKind::Text));
             layout_job = LayoutJob::default();
             items.push(Item::new(LayoutJob::default(), ItemKind::ListItem));
@@ -213,8 +225,9 @@ impl NotePreviewUi {
           Tag::Item => {
             layout_job.append("\n", 0.0, current_text_style.clone());
           }
-          Tag::List(..) => {} //TODO handle lists
-
+          Tag::List(..) => {
+            self.list_indent_lvl -= 1;
+          }
           _ => {
             println!("End: {:?}", tag)
           }
@@ -320,7 +333,15 @@ impl NotePreviewUi {
               let image = RetainedImage::from_image_bytes(url.clone(), &image_bytes);
               match image {
                 Ok(image) => {
-                  image.show_max_size(ui, vec2(ui.available_rect_before_wrap().width()-10.0, f32::INFINITY));
+                  ui.label("\n");
+                  image.show_max_size(
+                    ui,
+                    vec2(
+                      ui.available_rect_before_wrap().width() - 10.0,
+                      f32::INFINITY,
+                    ),
+                  );
+                  ui.label("\n");
                 }
                 Err(_) => {
                   ui.label(item.layout_job.clone());
@@ -356,6 +377,8 @@ impl NotePreviewUi {
           rect.height() / 8.0,
           ui.visuals().strong_text_color(),
         );
+        ui.allocate_exact_size(vec2(one_indent, row_height), Sense::hover());
+
       }
     }
   }
