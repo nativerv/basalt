@@ -1,4 +1,4 @@
-use pulldown_cmark::{Event, Parser, Options};
+use pulldown_cmark::{Parser, Options};
 
 use crate::lib::images_cache::ImagesCache;
 

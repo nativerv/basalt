@@ -1,6 +1,4 @@
-use egui::{Separator, Sense};
-use std::fs::File;
-use std::io::{Read, Result};
+use egui::{Sense, Separator};
 // Import the Read trait and Result type
 // Import necessary modules
 use egui::{
@@ -12,7 +10,6 @@ use pulldown_cmark::{Event, HeadingLevel, LinkType, Tag};
 
 // Import required types from the current crate
 use crate::features::note_preview::NotePreview;
-use crate::lib::images_cache::{self, ImagesCache};
 
 // Define a struct to manage the UI of the note preview
 pub struct NotePreviewUi {
@@ -41,11 +38,7 @@ impl Default for Link {
 // Define an enum to represent the kinds of items in the note
 enum ItemKind {
   Text,
-  Link {
-    url: String,
-    link_type: LinkType,
-    is_image: bool,
-  },
+  Link { url: String, is_image: bool },
   Separator,
   ListItem,
 }
@@ -176,7 +169,7 @@ impl NotePreviewUi {
             items.push(Item::new(layout_job, ItemKind::Text));
             layout_job = LayoutJob::default();
             items.push(Item::new(LayoutJob::default(), ItemKind::ListItem));
-            }     
+          }
           _ => {
             println!("Start: {:?}", tag)
           }
@@ -244,7 +237,6 @@ impl NotePreviewUi {
             layout_job,
             if is_link {
               ItemKind::Link {
-                link_type: link.link_type,
                 url: link.url.as_str().to_string(),
                 is_image: link.is_image,
               }
@@ -328,14 +320,14 @@ impl NotePreviewUi {
               let image = RetainedImage::from_image_bytes(url.clone(), &image_bytes);
               match image {
                 Ok(image) => {
-                  image.show(ui);
+                  image.show_max_size(ui, vec2(ui.available_rect_before_wrap().width()-10.0, f32::INFINITY));
                 }
-                Err(e) => {
+                Err(_) => {
                   ui.label(item.layout_job.clone());
                 }
               }
             }
-            Err(e) => {
+            Err(_) => {
               ui.label(item.layout_job.clone());
             }
           }
@@ -354,16 +346,17 @@ impl NotePreviewUi {
       ItemKind::Separator => {
         ui.add(Separator::default().horizontal());
       }
-        ItemKind::ListItem => {
-          let row_height = ui.text_style_height(&TextStyle::Body);
-            let one_indent = row_height / 2.0;
-            let (rect, _response) = ui.allocate_exact_size(vec2(one_indent, row_height), Sense::hover());
-            ui.painter().circle_filled(
-              rect.center(),
-              rect.height() / 8.0,
-              ui.visuals().strong_text_color(),
-          );
-        },
+      ItemKind::ListItem => {
+        let row_height = ui.text_style_height(&TextStyle::Body);
+        let one_indent = row_height / 2.0;
+        let (rect, _response) =
+          ui.allocate_exact_size(vec2(one_indent, row_height), Sense::hover());
+        ui.painter().circle_filled(
+          rect.center(),
+          rect.height() / 8.0,
+          ui.visuals().strong_text_color(),
+        );
+      }
     }
   }
 }
