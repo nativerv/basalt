@@ -156,7 +156,7 @@ impl NotePreviewUi {
           _ => {
             println!("End: {:?}", tag)
           }
-          
+
         },
         Event::Html(s) => println!("Html: {:?}", s),
         Event::Text(s) => {
@@ -228,7 +228,7 @@ impl NotePreviewUi {
       }
       ItemKind::Link { url, .. } => {
         if ui
-          .add(Hyperlink::from_label_and_url(item.layout_job.clone(), url))
+          .add(Hyperlink::from_label_and_url(item.layout_job.clone(), url.clone()))
           .clicked()
         {
           println!("Link clicked to url: {url}");
