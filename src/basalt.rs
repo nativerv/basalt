@@ -1,5 +1,5 @@
-use eframe::egui;
 use crate::features::{note_graph::NoteGraphUi, note_preview::NotePreviewUi};
+use eframe::egui;
 
 /// Global Basalt state
 #[derive(Default)]

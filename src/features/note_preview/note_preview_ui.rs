@@ -2,18 +2,20 @@ use egui::{Sense, Separator};
 // Import the Read trait and Result type
 // Import necessary modules
 use egui::{
-  text::LayoutJob, vec2, Align, Color32, FontFamily, FontId, Hyperlink, Layout, ScrollArea, Stroke,
+  text::LayoutJob, vec2, Align, Color32, FontFamily, FontId, Layout, ScrollArea, Stroke,
   TextEdit, TextFormat, TextStyle, Ui,
 };
 use egui_extras::image::RetainedImage;
 use pulldown_cmark::{Event, HeadingLevel, LinkType, Tag};
 
 // Import required types from the current crate
-use crate::features::note_preview::NotePreview;
+use crate::ui::Checkbox;
+
+use super::NoteData;
 
 // Define a struct to manage the UI of the note preview
 pub struct NotePreviewUi {
-  note: NotePreview,
+  note: NoteData,
   font_size: f32,
   list_indent_lvl: u8,
   list_indent_strenght: u8,
@@ -42,7 +44,10 @@ enum ItemKind {
   Text,
   Link { url: String, is_image: bool },
   Separator,
-  ListItem,
+  ListItem { indent_size: u8 },
+  Spacing,
+  Indent { indent_size: u8 },
+  Checkbox {checked: bool },
 }
 
 // Default implementation for the ItemKind enum
@@ -70,11 +75,13 @@ impl Item {
 // Default implementation for the NotePreviewUi struct
 impl Default for NotePreviewUi {
   fn default() -> Self {
+    let mut note = NoteData::default();
+    note.markdown_input = include_str!("../../../tests/test_markdown_first.md").to_string();
     Self {
       font_size: 14.0,
-      note: NotePreview::default(),
+      note,
       list_indent_lvl: 0,
-      list_indent_strenght: 4,
+      list_indent_strenght: 2,
     }
   }
 }
@@ -133,13 +140,10 @@ impl NotePreviewUi {
               HeadingLevel::H5 => self.font_size + 4.0,
               HeadingLevel::H6 => self.font_size + 2.0,
             };
-            layout_job.append("\n", 0.0, current_text_style.clone());
           }
           // Handle paragraph tags
           Tag::Paragraph => {
             current_text_style.font_id.size = self.font_size;
-            layout_job.append("\n", 0.0, current_text_style.clone());
-
           }
           // Handle code block tags
           Tag::CodeBlock(_) => {
@@ -168,19 +172,25 @@ impl NotePreviewUi {
             link.link_type = link_type.clone();
             link.is_image = true;
             is_link = true;
+            items.push(Item::new(LayoutJob::default(), ItemKind::Spacing));
           }
           Tag::List(..) => {
             self.list_indent_lvl += 1;
+            items.push(Item::new(LayoutJob::default(), ItemKind::Spacing));
           }
           Tag::Item => {
-            layout_job.append("\n", 0.0, current_text_style.clone());
-            let str = std::iter::repeat(" ")
-              .take((self.list_indent_lvl * self.list_indent_strenght).into())
-              .collect::<String>();
-            layout_job.append(&str, 0.0, current_text_style.clone());
-            items.push(Item::new(layout_job, ItemKind::Text));
-            layout_job = LayoutJob::default();
-            items.push(Item::new(LayoutJob::default(), ItemKind::ListItem));
+            items.push(Item::new(
+              LayoutJob::default(),
+              ItemKind::Indent {
+                indent_size: (self.list_indent_strenght * (self.list_indent_lvl - 1)),
+              },
+            ));
+            items.push(Item::new(
+              LayoutJob::default(),
+              ItemKind::ListItem {
+                indent_size: self.list_indent_strenght,
+              },
+            ));
           }
           _ => {
             println!("Start: {:?}", tag)
@@ -191,12 +201,10 @@ impl NotePreviewUi {
           // Handle heading end tags
           Tag::Heading(_, _, _) => {
             current_text_style.font_id.size = self.font_size;
-            layout_job.append("\n", 0.0, current_text_style.clone());
+            items.push(Item::new(LayoutJob::default(), ItemKind::Spacing));
           }
           // Handle paragraph end tags
-          Tag::Paragraph => {
-            layout_job.append("\n", 0.0, current_text_style.clone());
-          }
+          Tag::Paragraph => items.push(Item::new(LayoutJob::default(), ItemKind::Spacing)),
           // Handle strong text end tags
           Tag::Strong => {
             current_text_style.color = ui.style().visuals.text_color();
@@ -212,6 +220,7 @@ impl NotePreviewUi {
           // Handle code block end tags
           Tag::CodeBlock(_) => {
             is_code = false;
+            items.push(Item::new(LayoutJob::default(), ItemKind::Spacing));
           }
           // Handle link end tags
           Tag::Link(_, _, _) => {
@@ -221,9 +230,10 @@ impl NotePreviewUi {
           Tag::Image(_link_type, _url, _) => {
             link = Link::default();
             is_link = false;
+            items.push(Item::new(LayoutJob::default(), ItemKind::Spacing));
           }
           Tag::Item => {
-            layout_job.append("\n", 0.0, current_text_style.clone());
+            items.push(Item::new(LayoutJob::default(), ItemKind::Spacing));
           }
           Tag::List(..) => {
             self.list_indent_lvl -= 1;
@@ -276,21 +286,19 @@ impl NotePreviewUi {
           current_text_style.font_id.family = FontFamily::Proportional;
         }
         Event::FootnoteReference(s) => println!("FootnoteReference: {:?}", s),
-        Event::TaskListMarker(b) => println!("TaskListMarker: {:?}", b),
+        Event::TaskListMarker(b) => items.push(Item::new(
+          LayoutJob::default(),
+          ItemKind::Checkbox { checked: b },
+        )),
         Event::SoftBreak => {
           layout_job.append(" ", 0.0, current_text_style.clone());
         }
         Event::HardBreak => {
-          layout_job.append("\n", 0.0, current_text_style.clone());
+          items.push(Item::new(LayoutJob::default(), ItemKind::Spacing));
         }
         Event::Rule => {
-          layout_job.append("\n", 0.0, current_text_style.clone());
-          items.push(Item::new(layout_job, ItemKind::Text));
-          layout_job = LayoutJob::default();
           items.push(Item::new(LayoutJob::default(), ItemKind::Separator));
-          layout_job.append("\n", 0.0, current_text_style.clone());
-          items.push(Item::new(layout_job, ItemKind::Text));
-          layout_job = LayoutJob::default();
+          items.push(Item::new(LayoutJob::default(), ItemKind::Spacing));
         }
       }
     }
@@ -333,7 +341,6 @@ impl NotePreviewUi {
               let image = RetainedImage::from_image_bytes(url.clone(), &image_bytes);
               match image {
                 Ok(image) => {
-                  ui.label("\n");
                   image.show_max_size(
                     ui,
                     vec2(
@@ -341,7 +348,6 @@ impl NotePreviewUi {
                       f32::INFINITY,
                     ),
                   );
-                  ui.label("\n");
                 }
                 Err(_) => {
                   ui.label(item.layout_job.clone());
@@ -354,9 +360,8 @@ impl NotePreviewUi {
           }
         } else {
           if ui
-            .add(Hyperlink::from_label_and_url(
-              item.layout_job.clone(),
-              url.clone(),
+            .add(egui::Link::new(
+              item.layout_job.clone()
             ))
             .clicked()
           {
@@ -367,19 +372,48 @@ impl NotePreviewUi {
       ItemKind::Separator => {
         ui.add(Separator::default().horizontal());
       }
-      ItemKind::ListItem => {
+      ItemKind::ListItem { indent_size } => {
         let row_height = ui.text_style_height(&TextStyle::Body);
         let one_indent = row_height / 2.0;
-        let (rect, _response) =
-          ui.allocate_exact_size(vec2(one_indent, row_height), Sense::hover());
+        let (rect, _response) = ui.allocate_exact_size(
+          vec2(
+            <u8 as Into<f32>>::into(*indent_size) * one_indent,
+            row_height,
+          ),
+          Sense::hover(),
+        );
         ui.painter().circle_filled(
           rect.center(),
           rect.height() / 8.0,
           ui.visuals().strong_text_color(),
         );
-        ui.allocate_exact_size(vec2(one_indent, row_height), Sense::hover());
-
       }
+      ItemKind::Spacing => {
+        self.vertical_empty_separator(ui);
+      }
+      ItemKind::Indent { indent_size } => {
+        self.indent(ui, *indent_size);
+      }
+        ItemKind::Checkbox {checked } => {ui.add(Checkbox::without_text(*checked).interactive(false));} ,
     }
+  }
+
+  fn vertical_empty_separator(&self, ui: &mut Ui) {
+    let row_height: f32 = ui.text_style_height(&TextStyle::Body);
+    ui.allocate_exact_size(vec2(0.0, row_height), Sense::hover()); // make sure we take up some height
+    ui.end_row();
+    ui.set_row_height(row_height);
+  }
+
+  fn indent(&self, ui: &mut Ui, indent_size: u8) {
+    let row_height: f32 = ui.text_style_height(&TextStyle::Body);
+    let one_indent = row_height / 2.0;
+    ui.allocate_exact_size(
+      vec2(
+        <u8 as Into<f32>>::into(indent_size) * one_indent,
+        row_height,
+      ),
+      Sense::hover(),
+    );
   }
 }

@@ -1,17 +1,15 @@
-use std::{collections::HashMap, fs::File};
 use std::io::Read;
+use std::{collections::HashMap, fs::File};
 #[derive(Default)]
 pub struct ImagesCache {
   cache: HashMap<String, Vec<u8>>,
 }
 
 impl ImagesCache {
-
   pub fn load_image(&mut self, image_path: &str) -> Result<&Vec<u8>, std::io::Error> {
     if !self.cache.contains_key(image_path) {
       let image_data = read_image_from_file(image_path.to_string())?;
 
-          
       self.cache.insert(image_path.to_string(), image_data);
     }
 
