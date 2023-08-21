@@ -2,14 +2,12 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use egui::{
-  text::LayoutJob, vec2, Align, Color32, FontFamily, FontId, Layout, ScrollArea, Stroke, TextEdit,
-  TextFormat, TextStyle, Ui,
+  text::LayoutJob, vec2, Align, Color32, FontFamily, FontId, Layout, ScrollArea, Stroke, TextFormat, TextStyle, Ui,
 };
 use egui::{Sense, Separator};
 use egui_extras::image::RetainedImage;
 use pulldown_cmark::{Event, HeadingLevel, LinkType, Tag};
 
-use crate::lib::images_cache::ImagesCache;
 use crate::ui::Checkbox;
 
 use crate::features::note_preview::NoteData;
@@ -55,8 +53,8 @@ impl Default for Link {
 
 // Define an enum to represent the kinds of items in the note
 enum ItemKind {
-  Text,
-  Link { url: String, is_image: bool },
+  Text {layout_job: LayoutJob},
+  Link { url: String, is_image: bool, layout_job: LayoutJob },
   Separator,
   ListItem { indent_size: u8 },
   Spacing,
@@ -67,22 +65,7 @@ enum ItemKind {
 // Default implementation for the ItemKind enum
 impl Default for ItemKind {
   fn default() -> Self {
-    ItemKind::Text
-  }
-}
-
-// Define a struct to represent an item in the note
-#[derive(Default)]
-struct Item {
-  layout_job: LayoutJob,
-  kind: ItemKind,
-}
-
-// Implementation for the Item struct
-impl Item {
-  // Create a new Item instance with the provided layout job and kind
-  fn new(layout_job: LayoutJob, kind: ItemKind) -> Self {
-    Self { layout_job, kind }
+    ItemKind::Text {layout_job: LayoutJob::default() }
   }
 }
 
@@ -106,7 +89,7 @@ impl Note {
       default.background = Color32::from_rgb(0, 0, 0);
       default
     };
-    let mut items: Vec<Item> = Vec::new();
+    let mut items: Vec<ItemKind> = Vec::new();
     let mut is_code = false;
     let mut is_link = false;
     let mut link = Link::default();
@@ -159,25 +142,21 @@ impl Note {
             link.link_type = link_type.clone();
             link.is_image = true;
             is_link = true;
-            items.push(Item::new(LayoutJob::default(), ItemKind::Spacing));
+            items.push(ItemKind::Spacing);
           }
           Tag::List(..) => {
             self.list_indent_lvl += 1;
-            items.push(Item::new(LayoutJob::default(), ItemKind::Spacing));
+            items.push(ItemKind::Spacing);
           }
           Tag::Item => {
-            items.push(Item::new(
-              LayoutJob::default(),
+            items.push(
               ItemKind::Indent {
                 indent_size: (self.list_indent_strenght * (self.list_indent_lvl - 1)),
               },
-            ));
-            items.push(Item::new(
-              LayoutJob::default(),
-              ItemKind::ListItem {
-                indent_size: self.list_indent_strenght,
-              },
-            ));
+            );
+            items.push(ItemKind::ListItem {
+              indent_size: self.list_indent_strenght,
+            },);
           }
           _ => {
             //println!("Start: {:?}", tag)
@@ -188,10 +167,10 @@ impl Note {
           // Handle heading end tags
           Tag::Heading(_, _, _) => {
             current_text_style.font_id.size = self.font_size;
-            items.push(Item::new(LayoutJob::default(), ItemKind::Spacing));
+            items.push(ItemKind::Spacing);
           }
           // Handle paragraph end tags
-          Tag::Paragraph => items.push(Item::new(LayoutJob::default(), ItemKind::Spacing)),
+          Tag::Paragraph => items.push(ItemKind::Spacing),
           // Handle strong text end tags
           Tag::Strong => {
             current_text_style.color = ui.style().visuals.text_color();
@@ -207,7 +186,7 @@ impl Note {
           // Handle code block end tags
           Tag::CodeBlock(_) => {
             is_code = false;
-            items.push(Item::new(LayoutJob::default(), ItemKind::Spacing));
+            items.push(ItemKind::Spacing);
           }
           // Handle link end tags
           Tag::Link(_, _, _) => {
@@ -217,10 +196,10 @@ impl Note {
           Tag::Image(_link_type, _url, _) => {
             link = Link::default();
             is_link = false;
-            items.push(Item::new(LayoutJob::default(), ItemKind::Spacing));
+            items.push(ItemKind::Spacing);
           }
           Tag::Item => {
-            items.push(Item::new(LayoutJob::default(), ItemKind::Spacing));
+            items.push(ItemKind::Spacing);
           }
           Tag::List(..) => {
             self.list_indent_lvl -= 1;
@@ -229,7 +208,7 @@ impl Note {
             //println!("End: {:?}", tag)
           }
         },
-        Event::Html(s) => {}//println!("Html: {:?}", s),
+        Event::Html(_s) => {}//println!("Html: {:?}", s),
         Event::Text(s) => {
           // Append text to the layout job with appropriate style
           layout_job.append(
@@ -243,17 +222,17 @@ impl Note {
           );
 
           // Push the current item to the items list
-          items.push(Item::new(
-            layout_job,
+          items.push(
             if is_link {
               ItemKind::Link {
                 url: link.url.as_str().to_string(),
                 is_image: link.is_image,
+                layout_job: layout_job.clone(),
               }
             } else {
-              ItemKind::Text
+              ItemKind::Text {layout_job: layout_job}
             },
-          ));
+          );
 
           // Reset the layout job for the next item
           layout_job = LayoutJob::default();
@@ -265,27 +244,24 @@ impl Note {
           layout_job.append(&s, 0.0, current_text_style.clone());
 
           // Push the current item to the items list
-          items.push(Item::new(layout_job, ItemKind::Text));
+          items.push(ItemKind::Text {layout_job});
 
           // Reset style and layout job
           layout_job = LayoutJob::default();
           current_text_style.background = Color32::TRANSPARENT;
           current_text_style.font_id.family = FontFamily::Proportional;
         }
-        Event::FootnoteReference(s) => {}//println!("FootnoteReference: {:?}", s),
-        Event::TaskListMarker(b) => items.push(Item::new(
-          LayoutJob::default(),
-          ItemKind::Checkbox { checked: b },
-        )),
+        Event::FootnoteReference(_s) => {}//println!("FootnoteReference: {:?}", s),
+        Event::TaskListMarker(b) => items.push(ItemKind::Checkbox { checked: b },),
         Event::SoftBreak => {
           layout_job.append(" ", 0.0, current_text_style.clone());
         }
         Event::HardBreak => {
-          items.push(Item::new(LayoutJob::default(), ItemKind::Spacing));
+          items.push(ItemKind::Spacing);
         }
         Event::Rule => {
-          items.push(Item::new(LayoutJob::default(), ItemKind::Separator));
-          items.push(Item::new(LayoutJob::default(), ItemKind::Spacing));
+          items.push(ItemKind::Separator);
+          items.push(ItemKind::Spacing);
         }
       }
     }
@@ -313,14 +289,14 @@ impl Note {
   }
 
   // Render an individual item
-  fn item_render(&mut self, ui: &mut Ui, item: &Item) {
-    match &item.kind {
+  fn item_render(&mut self, ui: &mut Ui, item: &ItemKind) {
+    match &item {
       // Render text items
-      ItemKind::Text => {
-        ui.label(item.layout_job.clone());
+      ItemKind::Text{layout_job} => {
+        ui.label(layout_job.clone());
       }
       // Render link items
-      ItemKind::Link { url, is_image, .. } => {
+      ItemKind::Link { url, is_image, layout_job,.. } => {
         if *is_image {
           let mut note_data = self.note.borrow_mut();
           let image_bytes = note_data.images_cache.load_image(url.as_str());
@@ -338,16 +314,14 @@ impl Note {
                   );
                 }
                 Err(_) => {
-                  ui.label(item.layout_job.clone());
                 }
               }
             }
             Err(_) => {
-              ui.label(item.layout_job.clone());
             }
           }
         } else {
-          if ui.add(egui::Link::new(item.layout_job.clone())).clicked() {
+          if ui.add(egui::Link::new(layout_job.clone())).clicked() {
             println!("Link clicked to url: {url}");
           };
         }
