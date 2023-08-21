@@ -1,6 +1,8 @@
+use egui::{Separator, Sense};
 use std::fs::File;
-use std::io::{Read, Result}; // Import the Read trait and Result type
-                             // Import necessary modules
+use std::io::{Read, Result};
+// Import the Read trait and Result type
+// Import necessary modules
 use egui::{
   text::LayoutJob, vec2, Align, Color32, FontFamily, FontId, Hyperlink, Layout, ScrollArea, Stroke,
   TextEdit, TextFormat, TextStyle, Ui,
@@ -45,6 +47,8 @@ enum ItemKind {
     link_type: LinkType,
     is_image: bool,
   },
+  Separator,
+  ListItem,
 }
 
 // Default implementation for the ItemKind enum
@@ -168,6 +172,13 @@ impl NotePreviewUi {
             link.is_image = true;
             is_link = true;
           }
+          Tag::List(..) => {} //TODO handle lists
+          Tag::Item => {
+            layout_job.append("\n", 0.0, current_text_style.clone());
+            items.push(Item::new(layout_job, ItemKind::Text));
+            layout_job = LayoutJob::default();
+            items.push(Item::new(LayoutJob::default(), ItemKind::ListItem));
+            }     
           _ => {
             println!("Start: {:?}", tag)
           }
@@ -204,10 +215,15 @@ impl NotePreviewUi {
             is_link = false;
             link = Link::default();
           }
-          Tag::Image(link_type, url, _) => {
+          Tag::Image(_link_type, _url, _) => {
             link = Link::default();
             is_link = false;
           }
+          Tag::Item => {
+            layout_job.append("\n", 0.0, current_text_style.clone());
+          }
+          Tag::List(..) => {} //TODO handle lists
+
           _ => {
             println!("End: {:?}", tag)
           }
@@ -264,7 +280,15 @@ impl NotePreviewUi {
         Event::HardBreak => {
           layout_job.append("\n", 0.0, current_text_style.clone());
         }
-        Event::Rule => println!("Rule"),
+        Event::Rule => {
+          layout_job.append("\n", 0.0, current_text_style.clone());
+          items.push(Item::new(layout_job, ItemKind::Text));
+          layout_job = LayoutJob::default();
+          items.push(Item::new(LayoutJob::default(), ItemKind::Separator));
+          layout_job.append("\n", 0.0, current_text_style.clone());
+          items.push(Item::new(layout_job, ItemKind::Text));
+          layout_job = LayoutJob::default();
+        }
       }
     }
 
@@ -329,6 +353,19 @@ impl NotePreviewUi {
           };
         }
       }
+      ItemKind::Separator => {
+        ui.add(Separator::default().horizontal());
+      }
+        ItemKind::ListItem => {
+          let row_height = ui.text_style_height(&TextStyle::Body);
+            let one_indent = row_height / 2.0;
+            let (rect, _response) = ui.allocate_exact_size(vec2(one_indent, row_height), Sense::hover());
+            ui.painter().circle_filled(
+              rect.center(),
+              rect.height() / 8.0,
+              ui.visuals().strong_text_color(),
+          );
+        },
     }
   }
 }
