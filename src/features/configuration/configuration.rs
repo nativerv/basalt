@@ -2,6 +2,7 @@ use egui::Color32;
 use serde::{Deserialize, Serialize};
 use serde_json::{self, Map, Value};
 use std::fs::File;
+use std::io;
 use std::io::prelude::*;
 use std::path::PathBuf;
 
@@ -42,8 +43,9 @@ impl Default for Configuration {
 
 impl From<&Map<String, Value>> for Configuration {
   fn from(value: &Map<String, Value>) -> Self {
-    let s = serde_json::to_string(&value).expect("To string convert error");
-    serde_json::from_str(&s).expect("From string convert error")
+    let s = serde_json::to_string(&value)
+      .expect("invariant: what cound possibly happen that a `Map` will not serialize?");
+    serde_json::from_str(&s).expect("invariant: we just got that `str` from `to_string`")
   }
 }
 
@@ -51,75 +53,74 @@ impl Configuration {
   //TODO: replace json to conf format with include ordering
   //TODO: remove allow(dead_code)
   #[allow(dead_code)]
-  pub fn read_configuration(readable_content: &mut impl Read) -> Self {
+  pub fn read_configuration(readable_content: &mut impl Read) -> io::Result<Self> {
     let mut content = String::new();
-    readable_content
-      .read_to_string(&mut content)
-      .expect("Could not read file");
-    let mut configuration_map: Map<String, Value> =
-      serde_json::from_str(&content).expect("From string convert error");
-    let temp_config: Self = serde_json::from_str(&content).expect("From string convert error");
+    readable_content.read_to_string(&mut content)?;
+    let mut configuration_map: Map<String, Value> = serde_json::from_str(&content)?;
+    let temp_config: Self = serde_json::from_str(&content)?;
     for included_file in temp_config.include.iter() {
-      Self::read_configuration_inside(
-        &mut File::open(included_file).expect("Could not read file"),
-        &mut configuration_map,
-      )
+      Self::read_configuration_inside(&mut File::open(included_file)?, &mut configuration_map)?;
     }
-    Self::from(&configuration_map)
+    Ok(Self::from(&configuration_map))
   }
 
   fn read_configuration_inside(
     readable_content: &mut impl Read,
     configuration: &mut Map<String, Value>,
-  ) {
+  ) -> io::Result<()> {
     let mut content = String::new();
-    readable_content
-      .read_to_string(&mut content)
-      .expect("Could not read file");
-    let current_configuration: Map<String, Value> =
-      serde_json::from_str(&content).expect("JSON was not well-formatted");
-    for (str, val) in current_configuration {
-      *configuration
-        .get_mut(&str)
-        .expect("Get mutable value error") = val;
+    readable_content.read_to_string(&mut content)?;
+    let current_configuration: Map<String, Value> = serde_json::from_str(&content)?;
+    for (key, val) in current_configuration.into_iter() {
+      // Modify or insert
+      if let Some(old) = configuration.get_mut(&key) {
+        *old = val;
+      } else {
+        configuration.insert(key, val);
+      }
+      // TODO: Entry API: find out how to work out of clones
+      // (`val` attempted to be moved into 2 places without them)
+      // The Entry API is really beautiful but as it stands here it's
+      // pretty much unusable.
+      // configuration
+      //   .entry(&key)
+      //   .and_modify(|e| *e = val.clone())
+      //   .or_insert_with(|| val.clone());
     }
     let included_files = Self::from(&*configuration).include;
     for included_file in included_files.iter() {
-      Self::read_configuration_inside(
-        &mut File::open(included_file).expect("Could not read file"),
-        configuration,
-      )
+      Self::read_configuration_inside(&mut File::open(included_file)?, configuration)?;
     }
+
+    Ok(())
   }
 
   #[allow(dead_code)]
-  pub fn write_configuration(writable_content: &mut impl Write, configuration: &Self) {
-    let content =
-      serde_json::to_string_pretty(&configuration).expect("Could not serialize configuration");
-    writable_content
-      .write_all(content.as_bytes())
-      .expect("Could not write file");
+  pub fn write_configuration(
+    writable_content: &mut impl Write,
+    configuration: &Self,
+  ) -> io::Result<()> {
+    let content = serde_json::to_string_pretty(&configuration)?;
+    writable_content.write_all(content.as_bytes())
   }
 }
 
 #[cfg(test)]
 mod test {
-  use crate::features::configuration::configuration::Configuration;
-  use egui::Color32;
   use std::fs::File;
-  use std::io::{Seek, SeekFrom};
-  use std::path::PathBuf;
+  use std::io::{SeekFrom, Seek};
+  use super::*;
 
   #[test]
   fn read() {
     let readed_config = Configuration::read_configuration(
-      &mut File::open("tests/config.json").expect("Could not open file"),
+      &mut File::open("tests/configuration/config.json").expect("Could not open file"),
     );
-    assert_eq!(Configuration::default(), readed_config);
+    assert_eq!(Configuration::default(), readed_config.unwrap());
   }
 
   #[test]
-  fn read_multiple_file() {
+  fn read_multiple_files() {
     let expected_config: Configuration = Configuration {
       include: vec![],
       foreground_color: Color32::from_rgb(255, 255, 255),
@@ -128,18 +129,34 @@ mod test {
       secondary_color: Color32::from_rgb(0, 167, 0),
     };
     let read_config = Configuration::read_configuration(
-      &mut File::open("tests/first_config.json").expect("Could not open file"),
+      &mut File::open("tests/configuration/first_config.json").expect("Could not open file"),
     );
-    assert_eq!(expected_config, read_config);
+    assert_eq!(expected_config, read_config.unwrap());
   }
 
   #[test]
   #[ignore = "interferes with other tests"]
   fn write_to_file() {
     Configuration::write_configuration(
-      &mut File::create("tests/config_write.json").expect("Could not open file for write"),
+      &mut File::create("tests/configuration/config_write.json").expect("Could not open file for write"),
       &Configuration::default(),
+    )
+    .unwrap();
+  }
+
+  #[test]
+  fn read_multiple_files_with_partial_initial_config() {
+    let expected_config: Configuration = Configuration {
+      include: vec![],
+      foreground_color: Color32::from_rgb(255, 255, 255),
+      background_color: Color32::from_rgb(255, 255, 255),
+      primary_color: Color32::from_rgb(255, 0, 255),
+      secondary_color: Color32::from_rgb(0, 167, 0),
+    };
+    let read_config = Configuration::read_configuration(
+      &mut File::open("tests/configuration/first_config_partial.json").expect("Could not open file"),
     );
+    assert_eq!(expected_config, read_config.unwrap());
   }
 
   #[test]
@@ -153,20 +170,21 @@ mod test {
       secondary_color: Color32::from_rgb(0, 0, 0),
     };
     Configuration::write_configuration(
-      &mut File::create("tests/config_write_and_read.json").expect("Could not open file for write"),
+      &mut File::create("tests/configuration/config_write_and_read.json").expect("Could not open file for write"),
       &start_config,
-    );
+    )
+    .unwrap();
     let readed_config = Configuration::read_configuration(
-      &mut File::open("tests/config_write_and_read.json").expect("Could not open file"),
+      &mut File::open("tests/configuration/config_write_and_read.json").expect("Could not open file"),
     );
-    assert_eq!(start_config, readed_config);
+    assert_eq!(start_config, readed_config.unwrap());
   }
 
   #[test]
   #[ignore = "interferes with other tests"]
-  fn write_and_read_multiple_file() {
+  fn write_and_read_multiple_files() {
     let start_config: Configuration = Configuration {
-      include: vec![PathBuf::from("tests/second_config_write.json")],
+      include: vec![PathBuf::from("tests/configuration/second_config_write.json")],
       background_color: Color32::from_rgb(0, 0, 0),
       foreground_color: Color32::from_rgb(0, 0, 0),
       primary_color: Color32::from_rgb(0, 0, 0),
@@ -183,17 +201,18 @@ mod test {
       .write(true)
       .read(true)
       .create(true)
-      .open("tests/first_config_write.json")
+      .open("tests/configuration/first_config_write.json")
       .expect("Could not open file for write");
-    Configuration::write_configuration(&mut config_file, &start_config);
+    Configuration::write_configuration(&mut config_file, &start_config).unwrap();
     Configuration::write_configuration(
-      &mut File::create("tests/second_config_write.json").expect("Could not open file for write"),
+      &mut File::create("tests/configuration/second_config_write.json").expect("Could not open file for write"),
       &second_config,
-    );
+    )
+    .unwrap();
     let _ = &mut config_file
       .seek(SeekFrom::Start(0))
       .expect("Could not seek file");
     let readed_config = Configuration::read_configuration(&mut config_file);
-    assert_eq!(second_config, readed_config);
+    assert_eq!(second_config, readed_config.unwrap());
   }
 }

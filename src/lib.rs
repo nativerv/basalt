@@ -10,6 +10,7 @@
 #![allow(clippy::module_inception)]
 // Allow disabling clippy for expressions etc.
 #![feature(stmt_expr_attributes)]
+#![feature(lint_reasons)]
 
 mod basalt;
 mod features;
