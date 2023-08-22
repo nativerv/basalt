@@ -6,8 +6,8 @@ use std::io;
 use std::io::prelude::*;
 use std::path::PathBuf;
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-struct Configuration {
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+pub struct Configuration {
   #[serde(default)]
   pub include: Vec<PathBuf>,
   #[serde(default)]
@@ -20,7 +20,7 @@ struct Configuration {
   pub secondary_color: Color32,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 struct ConfigurationOptional {
   pub include: Option<Vec<PathBuf>>,
   pub background_color: Option<Color32>,
@@ -51,8 +51,7 @@ impl From<&Map<String, Value>> for Configuration {
 
 impl Configuration {
   //TODO: replace json to conf format with include ordering
-  //TODO: remove allow(dead_code)
-  #[allow(dead_code)]
+  #[cfg_attr(not(test), expect(unused))]
   pub fn read_configuration(readable_content: &mut impl Read) -> io::Result<Self> {
     let mut content = String::new();
     readable_content.read_to_string(&mut content)?;
@@ -94,8 +93,12 @@ impl Configuration {
 
     Ok(())
   }
+}
 
-  #[allow(dead_code)]
+impl Configuration {
+  // Every `expect(unused)` fn has to be in it's own impl block because of a Rust bug:
+  // <https://github.com/rust-lang/rust/issues/114416>
+  #[cfg_attr(not(test), expect(unused))]
   pub fn write_configuration(
     writable_content: &mut impl Write,
     configuration: &Self,
