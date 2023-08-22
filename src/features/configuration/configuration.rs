@@ -99,32 +99,28 @@ impl Configuration {
   // Every `expect(unused)` fn has to be in it's own impl block because of a Rust bug:
   // <https://github.com/rust-lang/rust/issues/114416>
   #[cfg_attr(not(test), expect(unused))]
-  pub fn write_configuration(
-    writable_content: &mut impl Write,
-    configuration: &Self,
-  ) -> io::Result<()> {
-    let content = serde_json::to_string_pretty(&configuration)?;
+  pub fn write_configuration(&self, writable_content: &mut impl Write) -> io::Result<()> {
+    let content = serde_json::to_string_pretty(self)?;
     writable_content.write_all(content.as_bytes())
   }
 }
 
 #[cfg(test)]
 mod test {
-  use std::fs::File;
-  use std::io::{SeekFrom, Seek};
   use super::*;
+  use std::fs::File;
 
   #[test]
   fn read() {
-    let readed_config = Configuration::read_configuration(
+    let read_config = Configuration::read_configuration(
       &mut File::open("tests/configuration/config.json").expect("Could not open file"),
     );
-    assert_eq!(Configuration::default(), readed_config.unwrap());
+    assert_eq!(Configuration::default(), read_config.unwrap());
   }
 
   #[test]
   fn read_multiple_files() {
-    let expected_config: Configuration = Configuration {
+    let expected_config = Configuration {
       include: vec![],
       foreground_color: Color32::from_rgb(255, 255, 255),
       background_color: Color32::from_rgb(255, 255, 255),
@@ -138,18 +134,8 @@ mod test {
   }
 
   #[test]
-  #[ignore = "interferes with other tests"]
-  fn write_to_file() {
-    Configuration::write_configuration(
-      &mut File::create("tests/configuration/config_write.json").expect("Could not open file for write"),
-      &Configuration::default(),
-    )
-    .unwrap();
-  }
-
-  #[test]
   fn read_multiple_files_with_partial_initial_config() {
-    let expected_config: Configuration = Configuration {
+    let expected_config = Configuration {
       include: vec![],
       foreground_color: Color32::from_rgb(255, 255, 255),
       background_color: Color32::from_rgb(255, 255, 255),
@@ -157,65 +143,35 @@ mod test {
       secondary_color: Color32::from_rgb(0, 167, 0),
     };
     let read_config = Configuration::read_configuration(
-      &mut File::open("tests/configuration/first_config_partial.json").expect("Could not open file"),
+      &mut File::open("tests/configuration/first_config_partial.json")
+        .expect("Could not open file"),
     );
     assert_eq!(expected_config, read_config.unwrap());
   }
 
   #[test]
-  #[ignore = "interferes with other tests"]
   fn write_and_read() {
-    let start_config: Configuration = Configuration {
+    let expected = Configuration {
       include: vec![],
       background_color: Color32::from_rgb(0, 0, 0),
       foreground_color: Color32::from_rgb(0, 0, 0),
       primary_color: Color32::from_rgb(0, 0, 0),
       secondary_color: Color32::from_rgb(0, 0, 0),
     };
-    Configuration::write_configuration(
-      &mut File::create("tests/configuration/config_write_and_read.json").expect("Could not open file for write"),
-      &start_config,
-    )
-    .unwrap();
-    let readed_config = Configuration::read_configuration(
-      &mut File::open("tests/configuration/config_write_and_read.json").expect("Could not open file"),
-    );
-    assert_eq!(start_config, readed_config.unwrap());
-  }
+    crate::lib::test::with_test_dir(|temp_dir| {
+      let first_config_file = temp_dir.join("first_config_file.json");
+      expected
+        .write_configuration(
+          &mut File::create(&first_config_file).expect("Could not open file for write"),
+        )
+        .unwrap();
 
-  #[test]
-  #[ignore = "interferes with other tests"]
-  fn write_and_read_multiple_files() {
-    let start_config: Configuration = Configuration {
-      include: vec![PathBuf::from("tests/configuration/second_config_write.json")],
-      background_color: Color32::from_rgb(0, 0, 0),
-      foreground_color: Color32::from_rgb(0, 0, 0),
-      primary_color: Color32::from_rgb(0, 0, 0),
-      secondary_color: Color32::from_rgb(0, 0, 0),
-    };
-    let second_config: Configuration = Configuration {
-      include: vec![],
-      background_color: Color32::from_rgb(255, 255, 255),
-      foreground_color: Color32::from_rgb(0, 0, 0),
-      primary_color: Color32::from_rgb(255, 0, 255),
-      secondary_color: Color32::from_rgb(0, 255, 0),
-    };
-    let mut config_file = File::options()
-      .write(true)
-      .read(true)
-      .create(true)
-      .open("tests/configuration/first_config_write.json")
-      .expect("Could not open file for write");
-    Configuration::write_configuration(&mut config_file, &start_config).unwrap();
-    Configuration::write_configuration(
-      &mut File::create("tests/configuration/second_config_write.json").expect("Could not open file for write"),
-      &second_config,
-    )
+      let actual =
+        Configuration::read_configuration(&mut File::open(&first_config_file).unwrap()).unwrap();
+      assert_eq!(expected, actual);
+
+      Ok(())
+    })
     .unwrap();
-    let _ = &mut config_file
-      .seek(SeekFrom::Start(0))
-      .expect("Could not seek file");
-    let readed_config = Configuration::read_configuration(&mut config_file);
-    assert_eq!(second_config, readed_config.unwrap());
   }
 }

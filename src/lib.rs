@@ -18,6 +18,9 @@ mod ui;
 mod lib {
   pub mod fdp;
   pub mod graph;
+
+  #[cfg(test)]
+  pub mod test;
 }
 pub use basalt::BasaltApp;
 
