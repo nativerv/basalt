@@ -14,7 +14,7 @@ impl BasaltApp {
       let my_str = include_str!("../tests/notes/test_markdown_first.md");
         Self {
             note_graph_ui: NoteGraphUi::default(),
-            note_preview_ui: NotePreviewUi::new(Rc::new(RefCell::new(NoteData { markdown_input: my_str.to_string(), images_cache: Default::default() })) ),
+            note_preview_ui: NotePreviewUi::new(Rc::new(RefCell::new(NoteData::new(my_str.to_string()) )) ),
         }
     }
 }

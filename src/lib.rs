@@ -18,6 +18,7 @@ mod lib {
   pub mod fdp;
   pub mod graph;
   pub mod images_cache;
+  pub mod publisher;
 }
 pub use basalt::BasaltApp;
 

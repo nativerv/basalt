@@ -1,12 +1,13 @@
-use std::cell::RefCell;
-use std::rc::Rc;
-
+use crate::lib::publisher::Publisher;
 use egui::{
-  text::LayoutJob, vec2, Align, Color32, FontFamily, FontId, Layout, ScrollArea, Stroke, TextFormat, TextStyle, Ui,
+  text::LayoutJob, vec2, Align, Color32, FontFamily, FontId, Layout, ScrollArea, Stroke,
+  TextFormat, TextStyle, Ui,
 };
 use egui::{Sense, Separator};
 use egui_extras::image::RetainedImage;
 use pulldown_cmark::{Event, HeadingLevel, LinkType, Tag};
+use std::cell::{Ref, RefCell};
+use std::rc::Rc;
 
 use crate::ui::Checkbox;
 
@@ -18,20 +19,29 @@ pub struct Note {
   font_size: f32,
   list_indent_lvl: u8,
   list_indent_strenght: u8,
+  items: Vec<ItemKind>,
+  is_updated: Rc<RefCell<bool>>,
 }
 
 impl Note {
   /// Create a new Note instance
   pub fn new(note: Rc<RefCell<NoteData>>) -> Self {
-    Self {
+    let this_note = Self {
       note,
       font_size: 16.0,
       list_indent_lvl: 0,
       list_indent_strenght: 4,
-    }
+      items: Vec::new(),
+      is_updated: Rc::new(RefCell::new(true)),
+    };
+    let is_updated: Rc<RefCell<bool>> = Rc::clone(&this_note.is_updated);
+    this_note
+      .note
+      .borrow_mut()
+      .subscribe(Box::new(move || *is_updated.borrow_mut() = true));
+    this_note
   }
 }
-  
 
 /// Define a struct to represent a link
 struct Link {
@@ -52,44 +62,63 @@ impl Default for Link {
 }
 
 // Define an enum to represent the kinds of items in the note
+#[derive(Clone)]
 enum ItemKind {
-  Text {layout_job: LayoutJob},
-  Link { url: String, is_image: bool, layout_job: LayoutJob },
+  Text {
+    layout_job: LayoutJob,
+  },
+  Link {
+    url: String,
+    is_image: bool,
+    layout_job: LayoutJob,
+  },
   Separator,
-  ListItem { indent_size: u8 },
+  ListItem {
+    indent_size: u8,
+  },
   Spacing,
-  Indent { indent_size: u8 },
-  Checkbox { checked: bool },
+  Indent {
+    indent_size: u8,
+  },
+  Checkbox {
+    checked: bool,
+  },
 }
 
 // Default implementation for the ItemKind enum
 impl Default for ItemKind {
   fn default() -> Self {
-    ItemKind::Text {layout_job: LayoutJob::default() }
+    ItemKind::Text {
+      layout_job: LayoutJob::default(),
+    }
   }
 }
-
 
 // Implementation for the NotePreviewUi struct
 impl Note {
   /// Render the UI for the note preview
   pub fn ui(&mut self, ui: &mut Ui) {
-    ui.heading("Note Preview");
-    self.render_markdown(ui);
-
+    if *self.is_updated.borrow() {
+      self.regenerate_items(ui);
+      *self.is_updated.borrow_mut() = false;
+    }
+    self.render(ui);
   }
 
   // Render the markdown content
-  fn render_markdown(&mut self, ui: &mut Ui) {
+  fn regenerate_items(&mut self, ui: &Ui) {
+    self.items.clear();
+
     // Initialize variables to track text styles and layout
     let mut current_text_style = TextFormat::default();
+
     let code_text_style = {
       let mut default = TextFormat::default();
       default.font_id = FontId::monospace(self.font_size);
       default.background = Color32::from_rgb(0, 0, 0);
       default
     };
-    let mut items: Vec<ItemKind> = Vec::new();
+
     let mut is_code = false;
     let mut is_link = false;
     let mut link = Link::default();
@@ -134,29 +163,27 @@ impl Note {
           // Handle link tags
           Tag::Link(link_type, url, _) => {
             link.url = url.to_string();
-            link.link_type = link_type.clone();
+            link.link_type = link_type;
             is_link = true;
           }
           Tag::Image(link_type, url, _) => {
             link.url = url.to_string();
-            link.link_type = link_type.clone();
+            link.link_type = link_type;
             link.is_image = true;
             is_link = true;
-            items.push(ItemKind::Spacing);
+            self.items.push(ItemKind::Spacing);
           }
           Tag::List(..) => {
             self.list_indent_lvl += 1;
-            items.push(ItemKind::Spacing);
+            self.items.push(ItemKind::Spacing);
           }
           Tag::Item => {
-            items.push(
-              ItemKind::Indent {
-                indent_size: (self.list_indent_strenght * (self.list_indent_lvl - 1)),
-              },
-            );
-            items.push(ItemKind::ListItem {
+            self.items.push(ItemKind::Indent {
+              indent_size: (self.list_indent_strenght * (self.list_indent_lvl - 1)),
+            });
+            self.items.push(ItemKind::ListItem {
               indent_size: self.list_indent_strenght,
-            },);
+            });
           }
           _ => {
             //println!("Start: {:?}", tag)
@@ -167,10 +194,10 @@ impl Note {
           // Handle heading end tags
           Tag::Heading(_, _, _) => {
             current_text_style.font_id.size = self.font_size;
-            items.push(ItemKind::Spacing);
+            self.items.push(ItemKind::Spacing);
           }
           // Handle paragraph end tags
-          Tag::Paragraph => items.push(ItemKind::Spacing),
+          Tag::Paragraph => self.items.push(ItemKind::Spacing),
           // Handle strong text end tags
           Tag::Strong => {
             current_text_style.color = ui.style().visuals.text_color();
@@ -186,7 +213,7 @@ impl Note {
           // Handle code block end tags
           Tag::CodeBlock(_) => {
             is_code = false;
-            items.push(ItemKind::Spacing);
+            self.items.push(ItemKind::Spacing);
           }
           // Handle link end tags
           Tag::Link(_, _, _) => {
@@ -196,10 +223,10 @@ impl Note {
           Tag::Image(_link_type, _url, _) => {
             link = Link::default();
             is_link = false;
-            items.push(ItemKind::Spacing);
+            self.items.push(ItemKind::Spacing);
           }
           Tag::Item => {
-            items.push(ItemKind::Spacing);
+            self.items.push(ItemKind::Spacing);
           }
           Tag::List(..) => {
             self.list_indent_lvl -= 1;
@@ -208,7 +235,7 @@ impl Note {
             //println!("End: {:?}", tag)
           }
         },
-        Event::Html(_s) => {}//println!("Html: {:?}", s),
+        Event::Html(_s) => {} //println!("Html: {:?}", s),
         Event::Text(s) => {
           // Append text to the layout job with appropriate style
           layout_job.append(
@@ -222,17 +249,17 @@ impl Note {
           );
 
           // Push the current item to the items list
-          items.push(
-            if is_link {
-              ItemKind::Link {
-                url: link.url.as_str().to_string(),
-                is_image: link.is_image,
-                layout_job: layout_job.clone(),
-              }
-            } else {
-              ItemKind::Text {layout_job: layout_job}
-            },
-          );
+          self.items.push(if is_link {
+            ItemKind::Link {
+              url: link.url.as_str().to_string(),
+              is_image: link.is_image,
+              layout_job: layout_job,
+            }
+          } else {
+            ItemKind::Text {
+              layout_job: layout_job,
+            }
+          });
 
           // Reset the layout job for the next item
           layout_job = LayoutJob::default();
@@ -244,29 +271,31 @@ impl Note {
           layout_job.append(&s, 0.0, current_text_style.clone());
 
           // Push the current item to the items list
-          items.push(ItemKind::Text {layout_job});
+          self.items.push(ItemKind::Text { layout_job });
 
           // Reset style and layout job
           layout_job = LayoutJob::default();
           current_text_style.background = Color32::TRANSPARENT;
           current_text_style.font_id.family = FontFamily::Proportional;
         }
-        Event::FootnoteReference(_s) => {}//println!("FootnoteReference: {:?}", s),
-        Event::TaskListMarker(b) => items.push(ItemKind::Checkbox { checked: b },),
+        Event::FootnoteReference(_s) => {} //println!("FootnoteReference: {:?}", s),
+        Event::TaskListMarker(b) => self.items.push(ItemKind::Checkbox { checked: b }),
         Event::SoftBreak => {
           layout_job.append(" ", 0.0, current_text_style.clone());
         }
         Event::HardBreak => {
-          items.push(ItemKind::Spacing);
+          self.items.push(ItemKind::Spacing);
         }
         Event::Rule => {
-          items.push(ItemKind::Separator);
-          items.push(ItemKind::Spacing);
+          self.items.push(ItemKind::Separator);
+          self.items.push(ItemKind::Spacing);
         }
       }
     }
+  }
 
-    // Define the layout for rendering items
+  fn render(&mut self, ui: &mut Ui) {
+    ui.heading("Note Preview");
     let layout = Layout::left_to_right(Align::BOTTOM).with_main_wrap(true);
     let initial_size = vec2(
       ui.available_width(),
@@ -274,35 +303,42 @@ impl Note {
     );
 
     // Render items in a scrollable area
-    ScrollArea::vertical().id_source("renderer").show(ui, |ui| {
-      ui.allocate_ui_with_layout(initial_size, layout, |ui| {
-        ui.spacing_mut().item_spacing.x = 0.0;
-        let row_height = ui.text_style_height(&TextStyle::Body);
-        ui.set_row_height(row_height);
+    ScrollArea::vertical()
+      .id_source("renderer")
+      .show_viewport(ui, |ui, _| {
+        ui.allocate_ui_with_layout(initial_size, layout, |ui| {
+          ui.spacing_mut().item_spacing.x = 0.0;
+          let row_height = ui.text_style_height(&TextStyle::Body);
+          ui.set_row_height(row_height);
 
-        // Render each item
-        for item in items {
-          Self::item_render(self, ui, &item);
-        }
+          // Render each item
+          for item in &self.items {
+            self.item_render(ui, &item);
+          }
+        });
       });
-    });
   }
 
   // Render an individual item
-  fn item_render(&mut self, ui: &mut Ui, item: &ItemKind) {
+  fn item_render(&self, ui: &mut Ui, item: &ItemKind) {
     match &item {
       // Render text items
-      ItemKind::Text{layout_job} => {
+      ItemKind::Text { layout_job } => {
         ui.label(layout_job.clone());
       }
       // Render link items
-      ItemKind::Link { url, is_image, layout_job,.. } => {
+      ItemKind::Link {
+        url,
+        is_image,
+        layout_job,
+        ..
+      } => {
         if *is_image {
           let mut note_data = self.note.borrow_mut();
           let image_bytes = note_data.images_cache.load_image(url.as_str());
           match image_bytes {
             Ok(image_bytes) => {
-              let image = RetainedImage::from_image_bytes(url.clone(), &image_bytes);
+              let image = RetainedImage::from_image_bytes(url, &image_bytes);
               match image {
                 Ok(image) => {
                   image.show_max_size(
@@ -313,12 +349,10 @@ impl Note {
                     ),
                   );
                 }
-                Err(_) => {
-                }
+                Err(_) => {}
               }
             }
-            Err(_) => {
-            }
+            Err(_) => {}
           }
         } else {
           if ui.add(egui::Link::new(layout_job.clone())).clicked() {
