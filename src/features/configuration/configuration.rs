@@ -9,6 +9,7 @@ use std::path::PathBuf;
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub struct Configuration {
   #[serde(default)]
+  #[cfg(not(target_arch = "wasm32"))]
   pub include: Vec<PathBuf>,
   #[serde(default)]
   pub background_color: Color32,
@@ -49,56 +50,67 @@ impl From<&Map<String, Value>> for Configuration {
   }
 }
 
+impl From<&Configuration> for Map<String, Value> {
+  fn from(value: &Configuration) -> Self {
+    let s = serde_json::to_string(&value)
+      .expect("invariant: what cound possibly happen that a `Configuration` will not serialize?");
+    serde_json::from_str(&s).expect("invariant: we just got that `str` from `to_string`")
+  }
+}
+
 impl Configuration {
   //TODO: replace json to conf format with include ordering
-  #[cfg_attr(not(test), expect(unused))]
-  pub fn read_configuration(readable_content: &mut impl Read) -> io::Result<Self> {
+  pub fn read_configuration(readable: &mut impl Read) -> io::Result<Self> {
     let mut content = String::new();
-    readable_content.read_to_string(&mut content)?;
-    let mut configuration_map: Map<String, Value> = serde_json::from_str(&content)?;
-    let temp_config: Self = serde_json::from_str(&content)?;
-    for included_file in temp_config.include.iter() {
-      Self::read_configuration_inside(&mut File::open(included_file)?, &mut configuration_map)?;
-    }
-    Ok(Self::from(&configuration_map))
+    readable.read_to_string(&mut content)?;
+    Ok((&serde_json::from_str::<Map<String, Value>>(&content)?).into())
   }
 
+  #[cfg(not(target_arch = "wasm32"))]
+  pub fn read_included(self) -> io::Result<Self> {
+    let mut configuration_map = Map::from(&self);
+
+    for included_file in self.include.iter() {
+      Self::read_configuration_inside(&mut File::open(included_file)?, &mut configuration_map)?;
+    }
+
+    Ok((&configuration_map).into())
+  }
+
+  #[cfg(not(target_arch = "wasm32"))]
   fn read_configuration_inside(
-    readable_content: &mut impl Read,
-    configuration: &mut Map<String, Value>,
+    readable: &mut impl Read,
+    configuration_map: &mut Map<String, Value>,
   ) -> io::Result<()> {
-    let mut content = String::new();
-    readable_content.read_to_string(&mut content)?;
+    let content = std::io::read_to_string(readable)?;
     let current_configuration: Map<String, Value> = serde_json::from_str(&content)?;
     for (key, val) in current_configuration.into_iter() {
       // Modify or insert
-      if let Some(old) = configuration.get_mut(&key) {
+      if let Some(old) = configuration_map.get_mut(&key) {
         *old = val;
       } else {
-        configuration.insert(key, val);
+        configuration_map.insert(key, val);
       }
       // TODO: Entry API: find out how to work out of clones
       // (`val` attempted to be moved into 2 places without them)
       // The Entry API is really beautiful but as it stands here it's
       // pretty much unusable.
-      // configuration
+      // configuration_map
       //   .entry(&key)
       //   .and_modify(|e| *e = val.clone())
       //   .or_insert_with(|| val.clone());
     }
-    let included_files = Self::from(&*configuration).include;
+
+    // Include - recurse
+    let included_files = Self::from(&*configuration_map).include;
     for included_file in included_files.iter() {
-      Self::read_configuration_inside(&mut File::open(included_file)?, configuration)?;
+      dbg!(&configuration_map);
+      Self::read_configuration_inside(&mut File::open(included_file)?, configuration_map)?;
     }
 
     Ok(())
   }
-}
-
-impl Configuration {
-  // Every `expect(unused)` fn has to be in it's own impl block because of a Rust bug:
-  // <https://github.com/rust-lang/rust/issues/114416>
-  #[cfg_attr(not(test), expect(unused))]
+  
   pub fn write_configuration(&self, writable_content: &mut impl Write) -> io::Result<()> {
     let content = serde_json::to_string_pretty(self)?;
     writable_content.write_all(content.as_bytes())
@@ -119,7 +131,7 @@ mod test {
   }
 
   #[test]
-  fn read_multiple_files() {
+  fn read_with_includes() {
     let expected_config = Configuration {
       include: vec![],
       foreground_color: Color32::from_rgb(255, 255, 255),
@@ -129,12 +141,15 @@ mod test {
     };
     let read_config = Configuration::read_configuration(
       &mut File::open("tests/configuration/first_config.json").expect("Could not open file"),
-    );
-    assert_eq!(expected_config, read_config.unwrap());
+    )
+    .expect("Could not read shallow")
+    .read_included()
+    .expect("Could not read included");
+    assert_eq!(expected_config, read_config);
   }
 
   #[test]
-  fn read_multiple_files_with_partial_initial_config() {
+  fn read_with_includes_with_partial_initial_config() {
     let expected_config = Configuration {
       include: vec![],
       foreground_color: Color32::from_rgb(255, 255, 255),
@@ -143,10 +158,12 @@ mod test {
       secondary_color: Color32::from_rgb(0, 167, 0),
     };
     let read_config = Configuration::read_configuration(
-      &mut File::open("tests/configuration/first_config_partial.json")
-        .expect("Could not open file"),
-    );
-    assert_eq!(expected_config, read_config.unwrap());
+      &mut File::open("tests/configuration/first_config.json").expect("Could not open file"),
+    )
+    .expect("Could not read shallow")
+    .read_included()
+    .expect("Could not read included");
+    assert_eq!(expected_config, read_config);
   }
 
   #[test]
