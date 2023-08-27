@@ -4,12 +4,12 @@ use serde_json::{self, Map, Value};
 use std::fs::File;
 use std::io;
 use std::io::prelude::*;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub struct Configuration {
-  #[serde(default)]
   #[cfg(not(target_arch = "wasm32"))]
+  #[serde(default)]
   pub include: Vec<PathBuf>,
   #[serde(default)]
   pub background_color: Color32,
@@ -23,6 +23,7 @@ pub struct Configuration {
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 struct ConfigurationOptional {
+  #[cfg(not(target_arch = "wasm32"))]
   pub include: Option<Vec<PathBuf>>,
   pub background_color: Option<Color32>,
   pub foreground_color: Option<Color32>,
@@ -33,6 +34,7 @@ struct ConfigurationOptional {
 impl Default for Configuration {
   fn default() -> Self {
     Self {
+      #[cfg(not(target_arch = "wasm32"))]
       include: vec![],
       background_color: Color32::from_rgb(0, 0, 0),
       foreground_color: Color32::from_rgb(255, 255, 255),
@@ -67,11 +69,14 @@ impl Configuration {
   }
 
   #[cfg(not(target_arch = "wasm32"))]
-  pub fn read_included(self) -> io::Result<Self> {
+  pub fn read_included(self, config_dir: &Path) -> io::Result<Self> {
     let mut configuration_map = Map::from(&self);
 
     for included_file in self.include.iter() {
-      Self::read_configuration_inside(&mut File::open(included_file)?, &mut configuration_map)?;
+      Self::read_configuration_inside(
+        &mut File::open(config_dir.join(included_file))?,
+        &mut configuration_map,
+      )?;
     }
 
     Ok((&configuration_map).into())
@@ -104,13 +109,12 @@ impl Configuration {
     // Include - recurse
     let included_files = Self::from(&*configuration_map).include;
     for included_file in included_files.iter() {
-      dbg!(&configuration_map);
       Self::read_configuration_inside(&mut File::open(included_file)?, configuration_map)?;
     }
 
     Ok(())
   }
-  
+
   pub fn write_configuration(&self, writable_content: &mut impl Write) -> io::Result<()> {
     let content = serde_json::to_string_pretty(self)?;
     writable_content.write_all(content.as_bytes())
@@ -143,7 +147,7 @@ mod test {
       &mut File::open("tests/configuration/first_config.json").expect("Could not open file"),
     )
     .expect("Could not read shallow")
-    .read_included()
+    .read_included(Path::new("tests/configuration"))
     .expect("Could not read included");
     assert_eq!(expected_config, read_config);
   }
@@ -161,7 +165,7 @@ mod test {
       &mut File::open("tests/configuration/first_config.json").expect("Could not open file"),
     )
     .expect("Could not read shallow")
-    .read_included()
+    .read_included(Path::new("tests/configuration"))
     .expect("Could not read included");
     assert_eq!(expected_config, read_config);
   }

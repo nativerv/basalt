@@ -1,1 +1,1 @@
-{"include":["tests/configuration/second_config.json"],"background_color":[0,0,0,255],"foreground_color":[255,255,255,255],"primary_color":[255,255,255,255],"secondary_color":[255,255,255,255]}
+{"include":["second_config.json"],"background_color":[0,0,0,255],"foreground_color":[255,255,255,255],"primary_color":[255,255,255,255],"secondary_color":[255,255,255,255]}
