@@ -10,6 +10,7 @@
 #![allow(clippy::module_inception)]
 // Allow disabling clippy for expressions etc.
 #![feature(stmt_expr_attributes)]
+#![feature(lint_reasons)]
 
 mod basalt;
 mod features;
@@ -17,6 +18,9 @@ mod ui;
 mod lib {
   pub mod fdp;
   pub mod graph;
+
+  #[cfg(test)]
+  pub mod test;
 }
 pub use basalt::BasaltApp;
 

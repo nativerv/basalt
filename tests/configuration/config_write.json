@@ -1,7 +1,5 @@
 {
-  "include": [
-    "tests/second_config_write.json"
-  ],
+  "include": [],
   "background_color": [
     0,
     0,
