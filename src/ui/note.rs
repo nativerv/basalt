@@ -19,6 +19,7 @@ pub struct Note {
   font_size: f32,
   list_indent_lvl: u8,
   list_indent_strenght: u8,
+  is_inside_list: bool,
   items: Vec<ItemKind>,
   is_updated: Rc<RefCell<bool>>,
   lists_stack: Vec<Option<u64>>,
@@ -32,6 +33,7 @@ impl Note {
       font_size: 16.0,
       list_indent_lvl: 0,
       list_indent_strenght: 4,
+      is_inside_list: false,
       items: Vec::new(),
       lists_stack: Vec::new(),
       is_updated: Rc::new(RefCell::new(true)),
@@ -84,6 +86,7 @@ enum ItemKind {
     layout_job: LayoutJob,
   },
   Spacing,
+  ItemSpacing,
   Indent {
     indent_size: u8,
   },
@@ -132,7 +135,7 @@ impl Note {
     let mut layout_job = LayoutJob::default();
 
     // Iterate through the markdown events
-    for event in &mut self.note.borrow().parsing_note() {
+    for event in &mut Rc::clone(&self.note).borrow().parsing_note() {
       match event {
         // Handle start tags
         Event::Start(tag) => match tag {
@@ -178,13 +181,14 @@ impl Note {
             link.link_type = link_type;
             link.is_image = true;
             is_link = true;
-            self.items.push(ItemKind::Spacing);
+            self.add_spacing(ItemKind::Spacing);
           }
           Tag::List(starting_number) => {
             println!("List: {:?}", tag);
+            self.is_inside_list = true;
             self.list_indent_lvl += 1;
             self.lists_stack.push(starting_number);
-            self.items.push(ItemKind::Spacing);
+            self.add_spacing(ItemKind::Spacing);
           }
           Tag::Item => {
             match &mut self.lists_stack.last_mut() {
@@ -229,13 +233,13 @@ impl Note {
           // Handle heading end tags
           Tag::Heading(_, _, _) => {
             current_text_style.font_id.size = self.font_size;
-            self.items.push(ItemKind::Spacing);
+            self.add_spacing(ItemKind::Spacing);
           }
           // Handle paragraph end tags
           Tag::Paragraph => {
-            self.items.push(ItemKind::Spacing);
+            self.add_spacing(ItemKind::Spacing);
             println!("End Paragraph: {:?}", tag)
-          },
+          }
           // Handle strong text end tags
           Tag::Strong => {
             current_text_style.color = ui.style().visuals.text_color();
@@ -251,7 +255,7 @@ impl Note {
           // Handle code block end tags
           Tag::CodeBlock(_) => {
             is_code = false;
-            self.items.push(ItemKind::Spacing);
+            self.add_spacing(ItemKind::Spacing);
           }
           // Handle link end tags
           Tag::Link(_, _, _) => {
@@ -261,16 +265,23 @@ impl Note {
           Tag::Image(_link_type, _url, _) => {
             link = Link::default();
             is_link = false;
-            self.items.push(ItemKind::Spacing);
+            self.add_spacing(ItemKind::Spacing);
           }
           Tag::Item => {
-            self.items.push(ItemKind::Spacing);
+            self.add_spacing(ItemKind::ItemSpacing);
             println!("End Item: {:?}", tag)
           }
           Tag::List(..) => {
             println!("End List: {:?}", tag);
+            self.is_inside_list = false;
             self.list_indent_lvl -= 1;
             self.lists_stack.pop();
+            if self.lists_stack.len() == 0 {
+              while let Some(ItemKind::ItemSpacing) = self.items.last() {
+                self.items.pop();
+              }
+              self.add_spacing(ItemKind::Spacing);
+            }
           }
           _ => {
             //println!("End: {:?}", tag)
@@ -323,11 +334,11 @@ impl Note {
           layout_job.append(" ", 0.0, current_text_style.clone());
         }
         Event::HardBreak => {
-          self.items.push(ItemKind::Spacing);
+          self.add_spacing(ItemKind::Spacing);
         }
         Event::Rule => {
           self.items.push(ItemKind::Separator);
-          self.items.push(ItemKind::Spacing);
+          self.add_spacing(ItemKind::Spacing);
         }
       }
     }
@@ -419,7 +430,10 @@ impl Note {
         );
       }
       ItemKind::Spacing => {
-        self.vertical_empty_separator(ui);
+        self.vertical_empty_separator(ui, 2);
+      }
+      ItemKind::ItemSpacing => {
+        self.vertical_empty_separator(ui, 1);
       }
       ItemKind::Indent { indent_size } => {
         self.indent(ui, *indent_size);
@@ -446,9 +460,9 @@ impl Note {
     }
   }
 
-  fn vertical_empty_separator(&self, ui: &mut Ui) {
+  fn vertical_empty_separator(&self, ui: &mut Ui, count_spacing: u8) {
     let row_height: f32 = ui.text_style_height(&TextStyle::Body);
-    ui.allocate_exact_size(vec2(0.0, row_height), Sense::hover()); // make sure we take up some height
+    ui.allocate_exact_size(vec2(0.0, row_height * count_spacing as f32), Sense::hover()); // make sure we take up some height
     ui.end_row();
     ui.set_row_height(row_height);
   }
@@ -463,5 +477,25 @@ impl Note {
       ),
       Sense::hover(),
     );
+  }
+
+  fn add_spacing(&mut self, item_spacing: ItemKind) {
+    match self.items.last() {
+      Some(ItemKind::ItemSpacing) => {}
+      Some(ItemKind::Spacing) => {}
+      _ => match item_spacing {
+        ItemKind::Spacing => {
+          if !self.is_inside_list {
+            self.items.push(item_spacing);
+          } else {
+            self.items.push(ItemKind::ItemSpacing)
+          }
+        }
+        ItemKind::ItemSpacing => {
+          self.items.push(item_spacing);
+        }
+        _ => {}
+      },
+    }
   }
 }
