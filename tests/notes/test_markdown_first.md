@@ -65,8 +65,8 @@ _This is italic text_
 
 Unordered
 
-+ Create a list by starting a line with `+`, `-`, or `*`
-+ Sub-lists are made by indenting 2 spaces:
+- Create a list by starting a line with `+`, `-`, or `*`
+- Sub-lists are made by indenting 2 spaces:
   - Marker character change forces new list start:
     * Ac tristique libero volutpat at
     + Facilisis in pretium nisl aliquet
@@ -86,6 +86,8 @@ Ordered
 Start numbering with offset:
 
 57. foo
+    1. fee
+    2. fii
 1. bar
 
 

@@ -21,6 +21,7 @@ pub struct Note {
   list_indent_strenght: u8,
   items: Vec<ItemKind>,
   is_updated: Rc<RefCell<bool>>,
+  lists_stack: Vec<Option<u64>>,
 }
 
 impl Note {
@@ -32,6 +33,7 @@ impl Note {
       list_indent_lvl: 0,
       list_indent_strenght: 4,
       items: Vec::new(),
+      lists_stack: Vec::new(),
       is_updated: Rc::new(RefCell::new(true)),
     };
     let is_updated: Rc<RefCell<bool>> = Rc::clone(&this_note.is_updated);
@@ -75,6 +77,11 @@ enum ItemKind {
   Separator,
   ListItem {
     indent_size: u8,
+  },
+  OrderedListItem {
+    indent_size: u8,
+    current_number: u64,
+    layout_job: LayoutJob,
   },
   Spacing,
   Indent {
@@ -173,17 +180,45 @@ impl Note {
             is_link = true;
             self.items.push(ItemKind::Spacing);
           }
-          Tag::List(..) => {
+          Tag::List(starting_number) => {
+            println!("List: {:?}", tag);
             self.list_indent_lvl += 1;
+            self.lists_stack.push(starting_number);
             self.items.push(ItemKind::Spacing);
           }
           Tag::Item => {
-            self.items.push(ItemKind::Indent {
-              indent_size: (self.list_indent_strenght * (self.list_indent_lvl - 1)),
-            });
-            self.items.push(ItemKind::ListItem {
-              indent_size: self.list_indent_strenght,
-            });
+            match &mut self.lists_stack.last_mut() {
+              Some(Some(last_list)) => {
+                layout_job.append(
+                  &format!("{last_list}. "),
+                  0.0,
+                  if is_code {
+                    code_text_style.clone()
+                  } else {
+                    current_text_style.clone()
+                  },
+                );
+                self.items.push(ItemKind::OrderedListItem {
+                  layout_job: layout_job,
+                  current_number: last_list.clone(),
+                  indent_size: (self.list_indent_strenght * (self.list_indent_lvl - 1)),
+                });
+                layout_job = LayoutJob::default();
+                *last_list += 1;
+              }
+              Some(None) => {
+                self.items.push(ItemKind::ListItem {
+                  indent_size: (self.list_indent_strenght * (self.list_indent_lvl - 1)),
+                });
+                self.items.push(ItemKind::Indent {
+                  indent_size: (self.list_indent_strenght),
+                });
+              }
+              None => {
+                log::error!("invariant: item in list without list");
+              }
+            }
+            println!("Start Item: {:?}", tag)
           }
           _ => {
             //println!("Start: {:?}", tag)
@@ -197,7 +232,10 @@ impl Note {
             self.items.push(ItemKind::Spacing);
           }
           // Handle paragraph end tags
-          Tag::Paragraph => self.items.push(ItemKind::Spacing),
+          Tag::Paragraph => {
+            self.items.push(ItemKind::Spacing);
+            println!("End Paragraph: {:?}", tag)
+          },
           // Handle strong text end tags
           Tag::Strong => {
             current_text_style.color = ui.style().visuals.text_color();
@@ -227,9 +265,12 @@ impl Note {
           }
           Tag::Item => {
             self.items.push(ItemKind::Spacing);
+            println!("End Item: {:?}", tag)
           }
           Tag::List(..) => {
+            println!("End List: {:?}", tag);
             self.list_indent_lvl -= 1;
+            self.lists_stack.pop();
           }
           _ => {
             //println!("End: {:?}", tag)
@@ -247,7 +288,6 @@ impl Note {
               current_text_style.clone()
             },
           );
-
           // Push the current item to the items list
           self.items.push(if is_link {
             ItemKind::Link {
@@ -260,7 +300,6 @@ impl Note {
               layout_job: layout_job,
             }
           });
-
           // Reset the layout job for the next item
           layout_job = LayoutJob::default();
         }
@@ -387,6 +426,22 @@ impl Note {
       }
       ItemKind::Checkbox { checked } => {
         ui.add(Checkbox::without_text(*checked).interactive(false));
+      }
+      ItemKind::OrderedListItem {
+        layout_job,
+        indent_size,
+        current_number: starting_number,
+      } => {
+        let row_height = ui.text_style_height(&TextStyle::Body);
+        let one_indent = row_height / 2.0;
+        let (rect, _response) = ui.allocate_exact_size(
+          vec2(
+            <u8 as Into<f32>>::into(*indent_size) * one_indent,
+            row_height,
+          ),
+          Sense::hover(),
+        );
+        ui.label(layout_job.clone());
       }
     }
   }
