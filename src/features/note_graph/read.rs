@@ -1,11 +1,10 @@
 use std::fs;
 
-use egui::epaint::ahash::HashMap;
 use pulldown_cmark::{Event, LinkType, Parser, Tag};
 
 use super::{
-  models::{Link, LinkEdge, LinkNode},
-  note_graph::{Adjacement, NoteGraph},
+  models::{Link, LinkEdge, LinkNode, LinkNodeId},
+  note_graph::{AAdjacement, ANoteGraph},
 };
 
 fn work_space() -> String {
@@ -28,7 +27,7 @@ pub struct Options {
 #[allow(dead_code)] // TODO remove
 pub fn create_graph_default_options(
   pathes: std::slice::Iter<'_, String>,
-) -> NoteGraph<String, LinkEdge, LinkNode> {
+) -> ANoteGraph<LinkNodeId, LinkEdge, LinkNode> {
   create_graph(
     pathes,
     |op: &Options| !op.url && !op.image && op.markdown,
@@ -45,11 +44,11 @@ pub fn create_graph(
   pathes: std::slice::Iter<'_, String>,
   options: impl Fn(&Options) -> bool,
   link_type: impl Fn(LinkType) -> bool,
-) -> NoteGraph<String, LinkEdge, LinkNode> {
+) -> ANoteGraph<LinkNodeId, LinkEdge, LinkNode> {
   let mut graph_draft_v1: Vec<(FilePath, Vec<Link>)> = vec![];
-  let mut graph_draft_v2: HashMap<FilePath, Vec<Link>> = HashMap::default();
+  // let mut graph_draft_v2: HashMap<FilePath, Vec<Link>> = HashMap::default();
 
-  let mut graph: NoteGraph<String, LinkEdge, LinkNode> = NoteGraph::default();
+  let mut graph: ANoteGraph<LinkNodeId, LinkEdge, LinkNode> = ANoteGraph::default();
 
   #[derive(Debug, Clone, PartialEq, Hash, Eq)]
   struct FilePath {
@@ -97,7 +96,7 @@ pub fn create_graph(
 
     // add root node(s)
     graph.nodes.insert(
-      path.fullname(),
+      LinkNodeId(path.fullname()),
       LinkNode {
         is_image: false,
       },
@@ -123,10 +122,8 @@ pub fn create_graph(
         if options(&option) {
           // normalize name
           let mut name = link.normalized_name.clone();
-          if !option.url {
-            if link.destination.starts_with("./") {
-              name = link.destination[2..].to_string();
-            }
+          if !option.url && link.destination.starts_with("./") {
+            name = link.destination[2..].to_string();
           }
 
           filtred_links.push(Link {
@@ -138,38 +135,42 @@ pub fn create_graph(
     }
 
     graph_draft_v1.push((path.clone(), filtred_links.clone()));
-    graph_draft_v2.insert(path, filtred_links);
+    // graph_draft_v2.insert(path, filtred_links);
   }
 
   // make edges from links
   for (path, links) in graph_draft_v1.iter() {
     for link in links.iter() {
+      let node_id = LinkNodeId(link.normalized_name.clone());
+
       graph.nodes.insert(
-        link.normalized_name.clone(),
+        node_id.clone(),
         LinkNode {
           is_image: link.is_image,
         },
       );
 
       let path_fullname = path.fullname();
-      match graph.adjacency.get::<String>(&path_fullname) {
+      let node_id_by_path = LinkNodeId(path_fullname);
+
+      match graph.adjacency.get::<LinkNodeId>(&node_id_by_path) {
         Some(adjacents) => {
           let mut new_adjacents = adjacents.clone();
-          new_adjacents.push(Adjacement(
-            link.normalized_name.clone(),
+          new_adjacents.push(AAdjacement(
+            node_id,
             LinkEdge {
               link_type: link.r#type,
               text: link.text.clone(),
               title: link.title.clone(),
             },
           ));
-          graph.adjacency.insert(path_fullname.clone(), new_adjacents.clone());
+          graph.adjacency.insert(node_id_by_path, new_adjacents.clone());
         }
         None => {
           graph.adjacency.insert(
-            path_fullname.clone(),
-            vec![Adjacement(
-              link.normalized_name.clone(),
+            node_id_by_path,
+            vec![AAdjacement(
+              node_id,
               LinkEdge {
                 link_type: link.r#type,
                 text: link.text.clone(),
@@ -204,6 +205,8 @@ pub fn links_from_path(path: &str) -> Vec<Link> {
         match r#type {
           LinkType::Inline | LinkType::Reference | LinkType::Shortcut | LinkType::Collapsed => {
             in_link = true;
+            log::debug!("{:?}", r#type);
+            println!("{:?}", r#type);
           }
           _ => continue,
         };
@@ -214,8 +217,7 @@ pub fn links_from_path(path: &str) -> Vec<Link> {
           tag.clone()
         {
           match r#type {
-            LinkType::Inline | LinkType::Reference | LinkType::Shortcut | LinkType::Collapsed => {}
-            LinkType::Autolink => {}
+            LinkType::Inline | LinkType::Reference | LinkType::Shortcut | LinkType::Collapsed | LinkType::Autolink => {}
             _ => continue,
           };
           links.push(Link::new(
@@ -244,12 +246,8 @@ pub fn links_from_path(path: &str) -> Vec<Link> {
 #[cfg(test)]
 mod test {
   use std::{fs, path::Path};
-
-  use markdown_parser::{read_file, Error};
   use pulldown_cmark::{Event, Parser, Tag};
-
   use crate::features::note_graph::read::work_space;
-
   use super::links_from_path;
 
   const MARKDOWN_TEST: &str = "/assets/markdown/sample.md";
@@ -262,13 +260,10 @@ mod test {
   }
 
   #[test]
-  fn markdown_rust_test() -> Result<(), Error> {
-    let path = format!("{}{}", work_space(), MARKDOWN_TEST);
-    println!("{}", path);
-    let md = read_file(path)?;
-    let content = md.content();
-    println!("{}", content);
-    Ok(())
+  fn linktypes() {
+    let pathes = vec![MARKDOWN_TEST.to_string()];
+    let graph = super::create_graph_default_options(pathes.iter());
+    println!("{:#?}", graph);
   }
 
   #[test]
@@ -276,7 +271,7 @@ mod test {
     let a = Path::new("./name.md");
     let b = Path::new("name.md");
 
-    assert_eq!(a, b)
+    assert_ne!(a, b)
   }
 
   #[test]

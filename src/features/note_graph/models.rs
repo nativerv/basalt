@@ -1,6 +1,6 @@
 use pulldown_cmark::LinkType;
 
-use super::note_graph::{Node, Edge};
+use super::note_graph::{ANode, AEdge};
 
 #[derive(Debug, Clone)]
 pub struct Link {
@@ -30,16 +30,17 @@ pub struct LinkNode {
   pub is_image: bool,
 }
 
-impl Node for LinkNode {
-    
-}
+impl ANode for LinkNode { }
 
 #[derive(Debug, Clone)]
 pub struct LinkEdge {
+  // line
   pub link_type: LinkType,
   pub text: String,
   pub title: String,
 }
 
-impl Edge for LinkEdge { }
+impl AEdge for LinkEdge { }
 
+#[derive(Debug, Clone, Hash, Eq, PartialEq)]
+pub struct LinkNodeId (pub String);

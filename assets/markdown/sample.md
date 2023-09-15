@@ -162,9 +162,10 @@ Like links, Images also have a footnote style syntax
 
 ![Alt text][id]
 [Alt text][id]
-[Kek]
 
+[Kek]
 [Kek][]
+
 [pamagite][]
 
 With a reference later in the document defining the URL location:
@@ -221,7 +222,7 @@ Duplicated footnote reference[^second].
 [^second]: Footnote text.
 
 
-### [Definition lists](https://github.com/markdown-it/markdown-it-deflist)
+### [Definition lists](https://github."com/markdown-it/markdown-it-deflist")
 
 Term 1
 
