@@ -33,7 +33,7 @@ pub struct ANodeId(usize);
 
 #[derive(Debug, Clone)]
 pub struct  AAdjacement<NodeId, Edge>(pub NodeId, pub Edge);
-//
+
 // impl<'a> Graph<'a> for ANoteGraph<LinkNodeId, LinkEdge, LinkNode> {
 //     type NodeId = LinkNodeId;
 //

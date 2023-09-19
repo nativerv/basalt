@@ -159,6 +159,7 @@ pub fn create_graph(
           new_adjacents.push(AAdjacement(
             node_id,
             LinkEdge {
+              location: link.range.clone(),
               link_type: link.r#type,
               text: link.text.clone(),
               title: link.title.clone(),
@@ -172,6 +173,7 @@ pub fn create_graph(
             vec![AAdjacement(
               node_id,
               LinkEdge {
+                location: link.range.clone(), 
                 link_type: link.r#type,
                 text: link.text.clone(),
                 title: link.title.clone(),
@@ -198,7 +200,7 @@ pub fn links_from_path(path: &str) -> Vec<Link> {
   let mut in_link = false;
 
   let mut links: Vec<Link> = vec![];
-  for event in parser {
+  for ( event, range ) in parser.into_offset_iter() {
     match event {
       Event::Start(Tag::Link(r#type, _, _) | Tag::Image(r#type, _, _)) => {
         link_title.clear();
@@ -206,7 +208,6 @@ pub fn links_from_path(path: &str) -> Vec<Link> {
           LinkType::Inline | LinkType::Reference | LinkType::Shortcut | LinkType::Collapsed => {
             in_link = true;
             log::debug!("{:?}", r#type);
-            println!("{:?}", r#type);
           }
           _ => continue,
         };
@@ -222,6 +223,7 @@ pub fn links_from_path(path: &str) -> Vec<Link> {
           };
           links.push(Link::new(
             r#type,
+            range,
             &link_title,
             &destination,
             &title,
@@ -251,6 +253,11 @@ mod test {
   use super::links_from_path;
 
   const MARKDOWN_TEST: &str = "/assets/markdown/sample.md";
+
+  #[test]
+  fn range_test() {
+
+  }
 
   #[test]
   fn graph_from_one_file() {
@@ -289,7 +296,7 @@ mod test {
     let mut in_link = false;
 
     // Iterate over each event from the parser
-    for event in parser {
+    for ( event, range ) in parser.into_offset_iter() {
       match event {
         Event::Start(Tag::Link(r#type, url, _title)) => {
           match r#type {

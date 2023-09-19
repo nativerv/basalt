@@ -19,6 +19,12 @@ You will like those projects!
 ##### h5 Heading
 ###### h6 Heading
 
+[r]: ./sample2.md "R"
+
+[r]
+
+[r]
+
 [link to sample 2](./sample2.md)
 [link to sample 3](./sample3.md)
 
@@ -162,10 +168,9 @@ Like links, Images also have a footnote style syntax
 
 ![Alt text][id]
 [Alt text][id]
-
 [Kek]
-[Kek][]
 
+[Kek][]
 [pamagite][]
 
 With a reference later in the document defining the URL location:
@@ -222,7 +227,7 @@ Duplicated footnote reference[^second].
 [^second]: Footnote text.
 
 
-### [Definition lists](https://github."com/markdown-it/markdown-it-deflist")
+### [Definition lists](https://github.com/markdown-it/markdown-it-deflist)
 
 Term 1
 
