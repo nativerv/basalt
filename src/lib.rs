@@ -20,10 +20,7 @@ mod lib {
   pub mod fdp;
   pub mod graph;
 
-  #[cfg(test)]
-  pub mod test;
   pub mod path;
-
   #[cfg(test)]
   pub mod test;
 }

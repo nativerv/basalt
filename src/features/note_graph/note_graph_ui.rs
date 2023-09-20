@@ -151,7 +151,7 @@ impl NoteGraphUi {
     // Actually can just move cloning inside `NoteGraphUi::new` and change the signature to &Rc,
     // but that one is more descriptive of what's happening with the Rc
     let vein_clone = Rc::clone(&self.vein);
-    crate::ui::reset_button_with(ui, self, || NoteGraphUi::new(Rc::clone(&vein_clone)));
+    crate::ui::reset_button_with(ui, self, || Self::new(Rc::clone(&vein_clone)));
   }
 
   fn paint(&mut self, painter: &Painter) {

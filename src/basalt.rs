@@ -5,36 +5,38 @@ use crate::features::note_graph::NoteGraphUi;
 use crate::features::veins::Veins;
 use directories::ProjectDirs;
 use std::fs::File;
+use std::rc::Rc;
+use std::io;
 
 /// Global Basalt state
 pub struct BasaltApp {
+  basalt_dirs: ProjectDirs,
+
   //configuration_path: PathBuf,
   configuration: Configuration,
 
-  // A list of veins known to the this Basalt instance. The head is the current vein.
+  /// A list of veins known to the this Basalt instance.
   veins: Veins,
 
-  note_graph_ui: NoteGraphUi,
+  note_graph_ui: Option<NoteGraphUi>,
 }
 
 impl BasaltApp {
   const CONFIG_FILE_NAME: &str = "basalt.json";
 
   fn from_configuration(configuration: Configuration) -> Self {
-    let veins = Veins::from_configuration(&configuration);
-    // FIXME: only one (first) Vein is taken it panics if there is none
-    let note_graph_ui = NoteGraphUi::new(
-      veins
-        .iter()
-        .next()
-        .map(|(_, vein)| std::rc::Rc::clone(vein))
-        .unwrap_or_else(|| panic!("reeeeeeeee!")),
-    );
-    Self {
-      veins,
-      configuration,
-      note_graph_ui,
-    }
+    panic!()
+  }
+
+  fn read_configuration(&mut self) -> io::Result<()> {
+    let configuration_path = self.basalt_dirs.config_dir().join(Self::CONFIG_FILE_NAME);
+    let configuration = File::open(configuration_path)
+      // FIXME(error presentation): on invalid config, it will appear as though there is config with no veins.
+      .and_then(|mut x| Configuration::read_configuration(&mut x))
+      .unwrap_or_default();
+    self.configuration = configuration;
+
+    Ok(())
   }
 }
 
@@ -52,25 +54,60 @@ impl Default for BasaltApp {
       panic!("{MESSAGE}")
     });
 
-    let configuration_path = basalt_dirs.config_dir().join(BasaltApp::CONFIG_FILE_NAME);
+    let configuration_path = basalt_dirs.config_dir().join(Self::CONFIG_FILE_NAME);
 
-    let configuration = File::options()
-      .read(true)
-      .open(configuration_path)
-      .into_iter()
-      .flat_map(|mut x| Configuration::read_configuration(&mut x))
-      .next()
-      // FIXME: error presentation
+    let configuration = File::open(configuration_path)
+      // FIXME(error presentation): on invalid config, it will appear as though there is config with no veins.
+      .and_then(|mut x| Configuration::read_configuration(&mut x))
       .unwrap_or_default();
 
-    Self::from_configuration(configuration)
+    let veins = Veins::from_configuration(&configuration);
+    // FIXME: only one (the first) Vein is taken
+    let note_graph_ui = veins
+      .iter()
+      .next()
+      .map(|(_, vein)| NoteGraphUi::new(Rc::clone(vein)));
+
+    Self {
+      basalt_dirs,
+      veins,
+      configuration,
+      note_graph_ui,
+    }
   }
+
 }
 
 impl eframe::App for BasaltApp {
   fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-    egui::CentralPanel::default().show(ctx, |ui| {
-      self.note_graph_ui.ui(ui);
+    use egui::{CentralPanel, Color32, RichText};
+
+    CentralPanel::default().show(ctx, |ui| {
+      if ui.input(|input| input.key_pressed(egui::Key::R)) {
+        self.read_configuration().expect("FIXME");
+        let veins = Veins::from_configuration(&self.configuration);
+        // FIXME: only one (the first) Vein is taken
+        let note_graph_ui = veins
+          .iter()
+          .next()
+          .map(|(_, vein)| NoteGraphUi::new(Rc::clone(vein)));
+
+        self.note_graph_ui = note_graph_ui;
+        log::info!("bruh");
+      }
+
+      if let Some(ref mut note_graph_ui) = &mut self.note_graph_ui {
+        note_graph_ui.ui(ui);
+      } else {
+        const ERROR_TEXT: &str = r#"
+Please create a file ~/.config/basalt/basalt.json and add
+{
+  "veins": ["/path/to/your/notes/folder"]
+}
+to it (must be an absolute path)
+        "#;
+        ui.label(RichText::new(ERROR_TEXT.trim()).color(Color32::RED));
+      }
     });
   }
 }

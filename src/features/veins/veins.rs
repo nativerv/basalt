@@ -50,13 +50,11 @@ impl Veins {
     return unimplemented!();
   }
 
-  pub fn iter<'a>(&'a self) -> Iter<'a> {
+  pub fn iter(&self) -> Iter<'_> {
     Iter {
       veins_iter: self.0.iter(),
     }
   }
-
-  pub fn borrow(&self) {}
 }
 
 pub struct Iter<'a> {
