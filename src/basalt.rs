@@ -24,10 +24,6 @@ pub struct BasaltApp {
 impl BasaltApp {
   const CONFIG_FILE_NAME: &str = "basalt.json";
 
-  fn from_configuration(configuration: Configuration) -> Self {
-    panic!()
-  }
-
   fn read_configuration(&mut self) -> io::Result<()> {
     let configuration_path = self.basalt_dirs.config_dir().join(Self::CONFIG_FILE_NAME);
     let configuration = File::open(configuration_path)
@@ -35,6 +31,13 @@ impl BasaltApp {
       .and_then(|mut x| Configuration::read_configuration(&mut x))
       .unwrap_or_default();
     self.configuration = configuration;
+
+    Ok(())
+  }
+
+  fn reload(&mut self) -> io::Result<()> {
+    self.read_configuration()?;
+    self.veins = Veins::from_configuration(&self.configuration)?;
 
     Ok(())
   }
@@ -61,7 +64,7 @@ impl Default for BasaltApp {
       .and_then(|mut x| Configuration::read_configuration(&mut x))
       .unwrap_or_default();
 
-    let veins = Veins::from_configuration(&configuration);
+    let veins = Veins::from_configuration(&configuration).expect("FIXME (remove default)");
     // FIXME: only one (the first) Vein is taken
     let note_graph_ui = veins
       .iter()
@@ -75,7 +78,6 @@ impl Default for BasaltApp {
       note_graph_ui,
     }
   }
-
 }
 
 impl eframe::App for BasaltApp {
@@ -84,16 +86,12 @@ impl eframe::App for BasaltApp {
 
     CentralPanel::default().show(ctx, |ui| {
       if ui.input(|input| input.key_pressed(egui::Key::R)) {
-        self.read_configuration().expect("FIXME");
-        let veins = Veins::from_configuration(&self.configuration);
+        self.reload().expect("FIXME");
         // FIXME: only one (the first) Vein is taken
-        let note_graph_ui = veins
+        self.note_graph_ui = self.veins
           .iter()
           .next()
           .map(|(_, vein)| NoteGraphUi::new(Rc::clone(vein)));
-
-        self.note_graph_ui = note_graph_ui;
-        log::info!("bruh");
       }
 
       if let Some(ref mut note_graph_ui) = &mut self.note_graph_ui {

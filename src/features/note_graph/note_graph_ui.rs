@@ -71,6 +71,41 @@ impl NoteGraphUi {
       dragged_node: None,
     }
   }
+
+  fn sync_node_positions(&mut self) {
+    // Remove orphan nodes
+    self.node_positions.retain(|&node_id, _| {
+      let result = std::panic::catch_unwind(|| {
+        self.note_graph.get_node(node_id)
+      });
+
+      if !result.is_ok() {
+        log::debug!("retaining node: {node_id:?}");
+      }
+      result.is_ok()
+    });
+
+    fn cycle(n: f32, max: f32) -> f32 {
+        let range = max * 2.0 + 1.0;
+        ((n % range) + range) % range - max
+    }
+
+    // Add missing nodes
+    let delta = 5.00;
+    let modulo = 30.00;
+    let mut current_x = 0.0;
+    let mut current_y = 0.0 + delta;
+    for (node_id, _) in self.note_graph.iter_nodes() {
+      if let None = self.node_positions.get(&node_id) {
+        self.node_positions.entry(node_id).or_insert(eades_custom::NodeFdpData {
+          pos: vec2(current_x, current_y),
+          force: vec2(current_x, current_y),
+        });
+        current_x = cycle(current_x + delta, modulo);
+        current_y = cycle(current_y - delta, modulo);
+      }
+    }
+  }
 }
 
 impl NoteGraphUi {
@@ -137,12 +172,20 @@ impl NoteGraphUi {
         .unwrap()
     }
     if ui.button("Load").clicked() {
-      self.node_positions = self.vein.borrow().read_config_value().unwrap()
+      use std::{io::ErrorKind::*, error::Error};
+      match Rc::clone(&self.vein).borrow().read_config_value() {
+        Ok(node_positions) => {
+          self.node_positions = node_positions;
+          self.sync_node_positions();
+        },
+        Err(error) if error.kind() == InvalidData => log::error!("could not load node positions: corrupt node positions file: {error}"),
+        Err(error) => log::error!("could not load node positions: unexpected error {error:#?}"),
+      };
     }
     if ui.button("Step").clicked() {
       eades_custom::apply_forces(&self.note_graph, &mut self.node_positions);
-      for (id, _node) in self.note_graph.iter_nodes() {
-        let eades_custom::NodeFdpData { pos, force } = self.node_positions.get_mut(&id).unwrap();
+      for (node_id, _) in self.note_graph.iter_nodes() {
+        let eades_custom::NodeFdpData { pos, force } = self.node_positions.get_mut(&node_id).unwrap();
         *pos += *force;
       }
     }
@@ -162,8 +205,8 @@ impl NoteGraphUi {
     eades_custom::apply_forces(&self.note_graph, &mut self.node_positions);
 
     // Render nodes & apply the FDP forces to positions
-    for (id, node) in self.note_graph.iter_nodes() {
-      let eades_custom::NodeFdpData { pos, force } = self.node_positions.get_mut(&id).unwrap();
+    for (node_id, node) in self.note_graph.iter_nodes() {
+      let eades_custom::NodeFdpData { pos, force } = self.node_positions.get_mut(&node_id).unwrap();
 
       // Apply forces
       // TODO: maybe decouple FDP force application from rendering/painting

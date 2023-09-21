@@ -10,6 +10,7 @@ use crate::lib::graph::{EdgeIncidents, Graph};
 #[derive(PartialEq, Eq)]
 pub struct MockGraph;
 
+#[cfg_attr(debug_assertions, derive(Debug))]
 #[derive(Serialize, Deserialize, PartialOrd, PartialEq, Eq, Hash, Clone, Copy)]
 pub struct NodeId(usize);
 

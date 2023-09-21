@@ -116,14 +116,19 @@ impl Vein {
 
   pub fn read_config_value<T>(&self) -> io::Result<T>
   where
-    T: Store<Error = io::Error> + serde::de::DeserializeOwned,
+    T: Store<Error = io::Error> + serde::de::DeserializeOwned + Default,
   {
     use Kind::*;
     match &self.kind {
       Native { path, .. } => {
         let config_file_name = Path::new(<T as Store>::vein_config_name());
+        dbg!(path.join(Self::CONFIG_DIRECTORY).join(config_file_name));
         let text =
-          std::fs::read_to_string(path.join(Self::CONFIG_DIRECTORY).join(config_file_name))?;
+          match std::fs::read_to_string(path.join(Self::CONFIG_DIRECTORY).join(config_file_name)) {
+            Ok(text) => text,
+            Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(<T as Default>::default()),
+            Err(error) => return Err(error),
+          };
         Ok(Store::deserialize(text)?)
       }
       Web { .. } => unimplemented!(),
@@ -265,7 +270,7 @@ mod tests {
   }
 
   /// Mock Store impl for testing purposes
-  #[derive(serde::Deserialize, serde::Serialize, PartialEq, Eq, Debug)]
+  #[derive(serde::Deserialize, serde::Serialize, PartialEq, Eq, Debug, Default)]
   struct Data(String);
   impl Store for Data {
     type Error = io::Error;

@@ -15,7 +15,9 @@
 
 mod basalt;
 mod features;
-mod ui;
+pub mod ui;
+
+/// Pure reusable library modules, except for ui ones go here. Things like physics calculation or little helpers or traits or macros, etc
 mod lib {
   pub mod fdp;
   pub mod graph;
