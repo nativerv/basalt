@@ -75,6 +75,7 @@ impl NoteGraphUi {
   fn sync_node_positions(&mut self) {
     // Remove orphan nodes
     self.node_positions.retain(|&node_id, _| {
+      // FIXME: what is that bullshit are you insane
       let result = std::panic::catch_unwind(|| {
         self.note_graph.get_node(node_id)
       });
@@ -157,6 +158,9 @@ impl NoteGraphUi {
     // Popup window
     Window::new("Options")
       .frame(Frame::popup(ui.style()))
+      .anchor(egui::Align2::RIGHT_TOP, vec2(-30., 30.))
+      .movable(false)
+      .resizable(false)
       .show(&ui.ctx().clone(), |ui| {
         ui.set_max_width(512.0);
         self.options_ui(ui);
@@ -172,7 +176,7 @@ impl NoteGraphUi {
         .unwrap()
     }
     if ui.button("Load").clicked() {
-      use std::{io::ErrorKind::*, error::Error};
+      use std::io::ErrorKind::*;
       match Rc::clone(&self.vein).borrow().read_config_value() {
         Ok(node_positions) => {
           self.node_positions = node_positions;

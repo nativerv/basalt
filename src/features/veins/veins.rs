@@ -1,25 +1,25 @@
 use crate::features::configuration::Configuration;
 use crate::features::veins::Vein;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::ops::Deref;
 use std::path::Path;
 use std::io;
 
 /// Vein id: just a *newtype* from string
-#[derive(Deserialize, Serialize, Hash, PartialEq, Eq, Debug, Clone)]
-pub struct VeinId(String);
+#[derive(Deserialize, Serialize, PartialOrd, Ord, PartialEq, Eq, Debug, Clone)]
+pub struct VeinId(Rc<str>);
 
 impl Deref for VeinId {
   type Target = str;
   fn deref(&self) -> &'_ Self::Target {
-    self.0.as_str()
+    &*self.0
   }
 }
 
 use std::cell::RefCell;
 use std::rc::Rc;
-type VeinsHashMap = HashMap<VeinId, Rc<RefCell<Vein>>>;
+type VeinsHashMap = BTreeMap<VeinId, Rc<RefCell<Vein>>>;
 /// Veins: struct that contains all veins known to the program.
 pub struct Veins(VeinsHashMap);
 
@@ -41,7 +41,7 @@ impl Veins {
       // (otherwise invalid veins will be ignored)
       .map(|vein_id| {
         Vein::new_native(Path::new(&**vein_id))
-          .map(|vein| (VeinId(vein_id.to_string()), Rc::new(RefCell::new(vein))))
+          .map(|vein| (vein_id.clone(), Rc::new(RefCell::new(vein))))
       })
       .collect::<io::Result<VeinsHashMap>>()
       .map(Into::into)
@@ -56,10 +56,14 @@ impl Veins {
       veins_iter: self.0.iter(),
     }
   }
+
+  pub fn get_vein(&self, id: &VeinId) -> Option<Rc<RefCell<Vein>>> {
+    self.0.get(id).map(Rc::clone)
+  }
 }
 
 pub struct Iter<'a> {
-  veins_iter: std::collections::hash_map::Iter<'a, VeinId, Rc<RefCell<Vein>>>,
+  veins_iter: std::collections::btree_map::Iter<'a, VeinId, Rc<RefCell<Vein>>>,
 }
 
 impl<'a> Iterator for Iter<'a> {
@@ -67,5 +71,10 @@ impl<'a> Iterator for Iter<'a> {
 
   fn next(&mut self) -> Option<Self::Item> {
     self.veins_iter.next()
+  }
+}
+impl<'a> DoubleEndedIterator for Iter<'a> {
+  fn next_back(&mut self) -> Option<Self::Item> {
+    self.veins_iter.next_back()
   }
 }
