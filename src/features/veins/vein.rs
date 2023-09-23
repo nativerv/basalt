@@ -84,9 +84,7 @@ impl Vein {
       .collect::<Notes>();
 
     Ok(Self {
-      kind: Kind::Native {
-        path,
-      },
+      kind: Kind::Native { path },
       notes,
     })
   }
@@ -126,7 +124,9 @@ impl Vein {
         let text =
           match std::fs::read_to_string(path.join(Self::CONFIG_DIRECTORY).join(config_file_name)) {
             Ok(text) => text,
-            Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(<T as Default>::default()),
+            Err(error) if error.kind() == io::ErrorKind::NotFound => {
+              return Ok(<T as Default>::default())
+            }
             Err(error) => return Err(error),
           };
         Ok(Store::deserialize(text)?)
@@ -317,9 +317,7 @@ mod tests {
         .join("data")
         .join("data.json");
       assert!(config_file_path.is_file());
-      <Data as Store>::deserialize(std::fs::read_to_string(
-        config_file_path,
-      )?)
+      <Data as Store>::deserialize(std::fs::read_to_string(config_file_path)?)
     })?;
 
     assert_eq!(expected, actual);

@@ -2,9 +2,9 @@ use crate::features::configuration::Configuration;
 use crate::features::veins::Vein;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
+use std::io;
 use std::ops::Deref;
 use std::path::Path;
-use std::io;
 
 /// Vein id: just a *newtype* from string
 #[derive(Deserialize, Serialize, PartialOrd, Ord, PartialEq, Eq, Debug, Clone)]
@@ -37,8 +37,6 @@ impl Veins {
     return configuration
       .veins
       .iter()
-      // FIXME: handle ignored error (load vein)
-      // (otherwise invalid veins will be ignored)
       .map(|vein_id| {
         Vein::new_native(Path::new(&**vein_id))
           .map(|vein| (vein_id.clone(), Rc::new(RefCell::new(vein))))

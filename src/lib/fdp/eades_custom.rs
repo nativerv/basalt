@@ -70,7 +70,8 @@ where
 pub const GRAVITY_CONSTANT: f32 = 0.1;
 pub const FORCE_CONSTANT: f32 = 1000.0;
 pub const IDEAL_LENGTH: f32 = 25.0;
-const APPLY_FORCES_CONTRACT_MESSAGE: &str = "contract: all nodes of `graph` exist in `node_positions`";
+const APPLY_FORCES_CONTRACT_MESSAGE: &str =
+  "contract: all nodes of `graph` exist in `node_positions`";
 
 pub fn apply_forces<NodeId, EdgeId>(
   graph: &impl for<'a> Graph<'a, NodeId = NodeId, EdgeId = EdgeId>,
@@ -78,22 +79,23 @@ pub fn apply_forces<NodeId, EdgeId>(
 ) where
   for<'a> NodeId: Hash + Eq + Serialize + Deserialize<'a>,
 {
+  const E: &str = APPLY_FORCES_CONTRACT_MESSAGE;
   // apply force towards center
   for (node_id, ..) in graph.iter_nodes() {
-    node_positions.get_mut(&node_id).expect(APPLY_FORCES_CONTRACT_MESSAGE).force =
-      node_positions.get_mut(&node_id).expect(APPLY_FORCES_CONTRACT_MESSAGE).pos * -1.0 * GRAVITY_CONSTANT;
+    node_positions.get_mut(&node_id).expect(E).force =
+      node_positions.get_mut(&node_id).expect(E).pos * -1.0 * GRAVITY_CONSTANT;
   }
 
   // apply repulsive force between nodes
   let f_rep = |direction: Vec2| (direction / (direction.length().powi(2))) * FORCE_CONSTANT;
   for (index, (node_id1, ..)) in graph.iter_nodes().enumerate() {
     for (node_id2, ..) in graph.iter_nodes().skip(index + 1) {
-      let node1_fdp = node_positions.get(&node_id1).expect(APPLY_FORCES_CONTRACT_MESSAGE);
-      let node2_fdp = node_positions.get(&node_id2).expect(APPLY_FORCES_CONTRACT_MESSAGE);
+      let node1_fdp = node_positions.get(&node_id1).expect(E);
+      let node2_fdp = node_positions.get(&node_id2).expect(E);
       let direction = node2_fdp.pos - node1_fdp.pos;
       let force = f_rep(direction);
-      node_positions.get_mut(&node_id1).expect(APPLY_FORCES_CONTRACT_MESSAGE).force += -force;
-      node_positions.get_mut(&node_id2).expect(APPLY_FORCES_CONTRACT_MESSAGE).force += force;
+      node_positions.get_mut(&node_id1).expect(E).force += -force;
+      node_positions.get_mut(&node_id2).expect(E).force += force;
     }
   }
 
@@ -103,12 +105,12 @@ pub fn apply_forces<NodeId, EdgeId>(
       node_from: node1_id,
       node_to: node2_id,
     } = graph.get_edge_incidents(edge_id);
-    let node1_fdp = node_positions.get(&node1_id).expect(APPLY_FORCES_CONTRACT_MESSAGE);
-    let node2_fdp = node_positions.get(&node2_id).expect(APPLY_FORCES_CONTRACT_MESSAGE);
+    let node1_fdp = node_positions.get(&node1_id).expect(E);
+    let node2_fdp = node_positions.get(&node2_id).expect(E);
     // TODO: document magic number
     let dis = (node1_fdp.pos - node2_fdp.pos) / 8.0;
     let diff = (dis.length() / IDEAL_LENGTH).log10();
-    node_positions.get_mut(&node1_id).expect(APPLY_FORCES_CONTRACT_MESSAGE).force += -dis * Vec2::splat(diff);
-    node_positions.get_mut(&node2_id).expect(APPLY_FORCES_CONTRACT_MESSAGE).force += dis * Vec2::splat(diff);
+    node_positions.get_mut(&node1_id).expect(E).force += -dis * Vec2::splat(diff);
+    node_positions.get_mut(&node2_id).expect(E).force += dis * Vec2::splat(diff);
   }
 }
