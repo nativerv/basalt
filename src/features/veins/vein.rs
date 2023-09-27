@@ -47,16 +47,31 @@ impl Vein {
 
     let path = path.canonicalize_unchecked();
 
-    // Check that path exists & a dir, else return.
-    path.is_dir().then_some(()).ok_or_else(|| {
+    // TODO: refactor this (and the similar everywhere else) bullshit with `ahyhow`
+    // Check that path exists
+    if !path.try_exists().map_err(|error| {
       io::Error::new(
-        io::ErrorKind::InvalidInput,
+        error.kind(),
+        format!("Cannot access '{}': '{}'", path.display(), error),
+      )
+    })? {
+      return Err(io::Error::new(
+        io::ErrorKind::NotFound,
         format!(
-          "Invalid Vein directory: '{}'",
+          "No such path: '{}'",
           path.canonicalize_unchecked().display()
         ),
-      )
-    })?;
+      ));
+    }
+    if !path.is_dir() {
+      return Err(io::Error::new(
+        io::ErrorKind::InvalidInput,
+        format!(
+          "Not a directory: '{}'. Vein must be a directory",
+          path.canonicalize_unchecked().display()
+        ),
+      ));
+    }
 
     let notes = WalkDir::new(&path)
       .into_iter()
