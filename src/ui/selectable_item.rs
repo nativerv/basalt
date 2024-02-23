@@ -24,19 +24,19 @@ impl Widget for SelectableItem {
         let total_extra = button_padding + button_padding;
 
         let wrap_width = ui.available_width() - total_extra.x;
-        let text = text.into_galley(ui, None, wrap_width, TextStyle::Button);
+        let galley = text.into_galley(ui, None, wrap_width, TextStyle::Button);
 
-        let mut desired_size = vec2(ui.available_width(), text.size().y);
+        let mut desired_size = vec2(ui.available_width(), galley.size().y);
         desired_size.y = desired_size.y.at_least(ui.spacing().interact_size.y);
         let (rect, response) = ui.allocate_at_least(desired_size, Sense::click());
         response.widget_info(|| {
-            WidgetInfo::selected(WidgetType::SelectableLabel, selected, text.text())
+            WidgetInfo::selected(WidgetType::SelectableLabel, selected, galley.text())
         });
 
         if ui.is_rect_visible(response.rect) {
             let text_pos = ui
                 .layout()
-                .align_size_within_rect(text.size(), rect.shrink2(button_padding))
+                .align_size_within_rect(galley.size(), rect.shrink2(button_padding))
                 .min;
 
             let visuals = ui.style().interact_selectable(&response, selected);
@@ -52,7 +52,7 @@ impl Widget for SelectableItem {
                 );
             }
 
-            text.paint_with_visuals(ui.painter(), text_pos, &visuals);
+            ui.painter().galley(text_pos, galley, visuals.text_color());
         }
 
         response
