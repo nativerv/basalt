@@ -21,8 +21,8 @@ pub mod ui;
 mod lib {
   pub mod fdp;
   pub mod graph;
-
   pub mod path;
+  pub mod temp_file;
   #[cfg(test)]
   pub mod test;
 }

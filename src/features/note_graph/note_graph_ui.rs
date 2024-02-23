@@ -1,5 +1,5 @@
 use crate::features::note_graph::note_graph_mock::{MockGraph, NodeId, NODES};
-use crate::features::veins::Vein;
+use crate::features::veins::{Vein, VeinId};
 use crate::lib::fdp::eades_custom;
 use crate::lib::graph::{EdgeIncidents, Graph};
 use egui::{containers::*, *};
@@ -12,6 +12,7 @@ use std::rc::Rc;
 /// NoteGraph ui state
 pub struct NoteGraphUi {
   vein: Rc<RefCell<Vein>>,
+  // vein_id: VeinId,
   node_positions: eades_custom::NodePositions<NodeId>,
   note_graph: MockGraph,
   width: f32,
@@ -37,33 +38,40 @@ struct NodeDrag {
   node_id: NodeId,
 }
 
+fn init_node_positions(graph: &MockGraph) -> eades_custom::NodePositions<NodeId> {
+  // Initial node placement: a circle
+  const STEP: f32 = TAU / NODES.len() as f32;
+  const RADIUS: f32 = 300.0;
+
+  // Creates a map of id -> (pos, force) and wraps it in our NodePositions newtype
+  eades_custom::NodePositions(
+    graph
+      .iter_nodes()
+      .enumerate()
+      .map(|(index, (id, _))| {
+        let x = RADIUS * ((index as f32 * STEP).cos());
+        let y = RADIUS * ((index as f32 * STEP).sin());
+        (
+          id,
+          eades_custom::NodeFdpData {
+            pos: vec2(x, y),
+            force: Vec2::default(),
+          },
+        )
+      })
+      .collect::<HashMap<_, _>>(),
+  )
+}
+
 impl NoteGraphUi {
+  // pub fn new(vein_id: VeinId, vein: Rc<RefCell<Vein>>) -> Self {
   pub fn new(vein: Rc<RefCell<Vein>>) -> Self {
     let note_graph = MockGraph;
-
-    // Initial node placement: a circle
-    const STEP: f32 = TAU / NODES.len() as f32;
-    const RADIUS: f32 = 300.0;
-    let node_positions = eades_custom::NodePositions(
-      note_graph
-        .iter_nodes()
-        .enumerate()
-        .map(|(index, (id, _))| {
-          let x = RADIUS * ((index as f32 * STEP).cos());
-          let y = RADIUS * ((index as f32 * STEP).sin());
-          (
-            id,
-            eades_custom::NodeFdpData {
-              pos: vec2(x, y),
-              force: Vec2::default(),
-            },
-          )
-        })
-        .collect::<HashMap<_, _>>(),
-    );
+    let node_positions = init_node_positions(&note_graph);
 
     Self {
       vein,
+      // vein_id,
       node_positions,
       note_graph,
       width: Default::default(),
@@ -79,6 +87,7 @@ impl NoteGraphUi {
       let result = std::panic::catch_unwind(|| self.note_graph.get_node(node_id));
 
       if !result.is_ok() {
+        #[cfg(debug_assertions)]
         log::debug!("retaining node: {node_id:?}");
       }
       result.is_ok()
@@ -112,6 +121,8 @@ impl NoteGraphUi {
 
 impl NoteGraphUi {
   pub fn ui(&mut self, ui: &mut Ui) {
+    // TODO: regenerate node_positions & graph from the Vein
+
     let painter = Painter::new(
       ui.ctx().clone(),
       ui.layer_id(),
@@ -203,6 +214,7 @@ impl NoteGraphUi {
     // but that one is more descriptive of what's happening with the Rc
     let vein_clone = Rc::clone(&self.vein);
     crate::ui::reset_button_with(ui, self, || Self::new(Rc::clone(&vein_clone)));
+    // crate::ui::reset_button_with(ui, self, || Self::new(self.vein_id.clone(), Rc::clone(&vein_clone)));
   }
 
   fn paint(&mut self, painter: &Painter) {

@@ -1,4 +1,4 @@
-use crate::lib::path::PathExt;
+use crate::lib::{path::PathExt, temp_file};
 use std::collections::HashMap;
 use std::io;
 use std::path::{Path, PathBuf};
@@ -21,7 +21,8 @@ type Notes = HashMap<NoteId, Note>;
 /// Veins are a name for Basalt's note repositories.
 /// Example: ~/Documents/personal-notes
 /// Example: ~/Documents/work-notes
-#[derive(Debug)]
+#[cfg_attr(debug_assertions, derive(Debug))]
+#[derive(PartialEq, Eq)]
 pub enum Kind {
   Native {
     path: PathBuf,
@@ -32,7 +33,8 @@ pub enum Kind {
   Remote {},
 }
 
-#[derive(Debug)]
+#[cfg_attr(debug_assertions, derive(Debug))]
+#[derive(PartialEq, Eq)]
 pub struct Vein {
   kind: Kind,
   notes: Notes,
@@ -102,6 +104,11 @@ impl Vein {
       kind: Kind::Native { path },
       notes,
     })
+  }
+
+  #[cfg(any(windows, unix))]
+  pub fn new_native_temp_vein() -> io::Result<Vein> {
+    Vein::new_native(&temp_file::temp_dir().expect("FIXME"))
   }
 
   pub fn iter(&self) -> Iter<'_> {

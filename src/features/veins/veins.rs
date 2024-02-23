@@ -7,16 +7,22 @@ use std::ops::Deref;
 use std::path::Path;
 use std::cell::RefCell;
 use std::rc::Rc;
+use std::sync::Arc;
 
 /// Vein id: just a _newtype_ from allocated str
-/// NOTE: uses Rc<str> instead of string for O(1) clone.
+/// NOTE: uses Arc<str> instead of string for O(1) clone.
 #[derive(Deserialize, Serialize, PartialOrd, Ord, PartialEq, Eq, Debug, Clone)]
-pub struct VeinId(Rc<str>);
-
+pub struct VeinId(Arc<str>);
 impl Deref for VeinId {
   type Target = str;
   fn deref(&self) -> &'_ Self::Target {
     &*self.0
+  }
+}
+impl VeinId {
+  /// Creates a new empty `Veins` struct
+  pub fn new(id: impl AsRef<str>) -> Self {
+    Self(id.as_ref().into())
   }
 }
 
@@ -70,6 +76,7 @@ impl Veins {
 }
 
 /// Iterator over tuples of (&VeinId, &Rc<RefCell<Vein>>)
+//#[cfg_attr(debug_assertions, derive(Debug))]
 pub struct Iter<'a> {
   veins_iter: std::collections::btree_map::Iter<'a, VeinId, MaybeVein>,
 }

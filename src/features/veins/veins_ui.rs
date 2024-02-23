@@ -16,7 +16,7 @@ impl<'a> VeinSelectionUi<'a> {
 
 impl egui::Widget for VeinSelectionUi<'_> {
   fn ui(self, ui: &mut egui::Ui) -> egui::Response {
-    use egui::{self, Rect, Sense, Pos2, Color32, Stroke, SelectableLabel, vec2};
+    use egui::{Rect, Sense, Pos2, Color32, Stroke};
     for (vein_id, maybe_vein) in self.veins.iter() {
       let is_selected = self
         .current_vein
