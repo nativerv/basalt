@@ -1,4 +1,7 @@
-use crate::{ui::SelectableItem, features::veins::{VeinId, Veins}};
+use crate::{
+  features::veins::{VeinId, Veins},
+  ui::SelectableItem,
+};
 
 pub struct VeinSelectionUi<'a> {
   veins: &'a Veins,
@@ -16,7 +19,7 @@ impl<'a> VeinSelectionUi<'a> {
 
 impl egui::Widget for VeinSelectionUi<'_> {
   fn ui(self, ui: &mut egui::Ui) -> egui::Response {
-    use egui::{Rect, Sense, Pos2, Color32, Stroke};
+    use egui::{Color32, Pos2, Rect, Sense, Stroke};
     for (vein_id, maybe_vein) in self.veins.iter() {
       let is_selected = self
         .current_vein
@@ -37,6 +40,16 @@ impl egui::Widget for VeinSelectionUi<'_> {
         }
       });
     }
-    ui.allocate_rect(Rect{ min: Pos2::ZERO, max: Pos2::ZERO }, Sense { click: false, drag: false, focusable: false, })
+    ui.allocate_rect(
+      Rect {
+        min: Pos2::ZERO,
+        max: Pos2::ZERO,
+      },
+      Sense {
+        click: false,
+        drag: false,
+        focusable: false,
+      },
+    )
   }
 }

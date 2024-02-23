@@ -2,13 +2,13 @@ use eframe::egui;
 
 use crate::features::configuration::Configuration;
 use crate::features::note_graph::NoteGraphUi;
-use crate::features::veins::{VeinId, VeinSelectionUi, Veins, Vein};
+use crate::features::veins::{Vein, VeinId, VeinSelectionUi, Veins};
 use directories::ProjectDirs;
-use egui::{CentralPanel, Color32, Event, Key, RichText};
+use egui::{CentralPanel, Event, Key};
+use std::cell::RefCell;
 use std::fs::File;
 use std::io;
 use std::rc::Rc;
-use std::cell::RefCell;
 
 const CONFIG_NOT_EXISTS_ERROR_TEXT: &str = r#"
 "#;
@@ -50,7 +50,9 @@ impl Default for BasaltApp {
       let message = format!("Critical error: HOME directory could not be retrieved from the operating system. Either you have critical problems with your system or have launched Basalt weirdly.");
       return Self::BasaltDirsError {
         message,
-        note_graph_ui: NoteGraphUi::new(Rc::new(RefCell::new(Vein::new_native_temp_vein().expect("FIXME")))),
+        note_graph_ui: NoteGraphUi::new(Rc::new(RefCell::new(
+          Vein::new_native_temp_vein().expect("FIXME"),
+        ))),
       };
     };
 
@@ -60,6 +62,7 @@ impl Default for BasaltApp {
     {
       Ok(configuration) => configuration,
       Err(error) => {
+        #[rustfmt::skip]
         let message = match error.kind() {
           // TODO: FIXME: custom error type (io error kinds may overlap from different sources)
           io::ErrorKind::InvalidData => {
@@ -91,9 +94,11 @@ impl Default for BasaltApp {
         return Self::ConfigurationError {
           message,
           basalt_dirs,
-          note_graph_ui: NoteGraphUi::new(Rc::new(RefCell::new(Vein::new_native_temp_vein().expect("FIXME")))),
+          note_graph_ui: NoteGraphUi::new(Rc::new(RefCell::new(
+            Vein::new_native_temp_vein().expect("FIXME"),
+          ))),
         };
-      },
+      }
     };
 
     // Some veins can exist, some can error out...
@@ -102,7 +107,8 @@ impl Default for BasaltApp {
     if veins.iter().count() < 1 {
       log::error!("initializing basalt: no veins specified");
       // FIXME: windows directory
-      let message = format!(r#"
+      let message = format!(
+        r#"
         You haven't specified any Veins in your configuration. Basalt calls it's note directories *Veins*.
         Please go to your Basalt configuration file ('{path}') and add paths to your note directories as so:
         ```
@@ -118,19 +124,24 @@ impl Default for BasaltApp {
       return Self::NoVeins {
         message,
         basalt_dirs,
-        note_graph_ui: NoteGraphUi::new(Rc::new(RefCell::new(Vein::new_native_temp_vein().expect("FIXME")))),
+        note_graph_ui: NoteGraphUi::new(Rc::new(RefCell::new(
+          Vein::new_native_temp_vein().expect("FIXME"),
+        ))),
       };
     }
 
     // FIXME: only one (the first) Vein is taken, should probably persist selected
-    let current_vein = veins
-      .iter()
-      .next()
-      .map(|(vein_id, ..)| vein_id.clone());
+    let current_vein = veins.iter().next().map(|(vein_id, ..)| vein_id.clone());
     let note_graph_ui = current_vein
       .as_ref()
       .and_then(|vein_id| veins.get_vein(vein_id))
-      .and_then(|maybe_vein| maybe_vein.as_ref().map(Rc::clone).map(NoteGraphUi::new).ok());
+      .and_then(|maybe_vein| {
+        maybe_vein
+          .as_ref()
+          .map(Rc::clone)
+          .map(NoteGraphUi::new)
+          .ok()
+      });
 
     Self::Ok {
       basalt_dirs,
@@ -143,14 +154,19 @@ impl Default for BasaltApp {
 }
 
 impl BasaltApp {
-  const CONFIG_FILE_NAME: &str = "basalt.json";
+  const CONFIG_FILE_NAME: &'static str = "basalt.json";
 
   fn reload(&mut self) {
     *self = BasaltApp::default();
   }
 
   fn prev_vein(&mut self) {
-    if let BasaltApp::Ok { veins, current_vein, .. } = self {
+    if let BasaltApp::Ok {
+      veins,
+      current_vein,
+      ..
+    } = self
+    {
       let prev_vein_id = veins
         .iter()
         .rev()
@@ -162,7 +178,12 @@ impl BasaltApp {
   }
 
   fn next_vein(&mut self) {
-    if let BasaltApp::Ok { veins, current_vein, .. } = self {
+    if let BasaltApp::Ok {
+      veins,
+      current_vein,
+      ..
+    } = self
+    {
       let next_vein_id = veins
         .iter()
         .skip_while(|(&ref id, ..)| Some(id) != current_vein.as_ref())
@@ -214,9 +235,11 @@ impl eframe::App for BasaltApp {
             ui.add(VeinSelectionUi::new(&*veins, current_vein));
           });
           ui.vertical(|ui| {
-            note_graph_ui.as_mut().and_then(|note_graph_ui| Some(note_graph_ui.ui(ui)));
+            note_graph_ui
+              .as_mut()
+              .and_then(|note_graph_ui| Some(note_graph_ui.ui(ui)));
           });
-        },
+        }
         error => unimplemented!(),
       };
     });

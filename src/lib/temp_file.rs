@@ -10,4 +10,3 @@ pub fn temp_dir() -> std::io::Result<PathBuf> {
   std::fs::create_dir(&random_path)?;
   Ok(random_path)
 }
-
