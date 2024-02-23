@@ -47,7 +47,7 @@ impl Default for BasaltApp {
     let Some(basalt_dirs) = ProjectDirs::from("com", "basalt", "basalt") else {
       // TODO: also have a way to specify dirs as cli args or env vars
       log::error!("initializing basalt: CRITICAL: could not retrieve valid home directory path for your OS: required for configuration dir");
-      let message = format!("Critical error: HOME directory could not be retrieved from the operating system. Either you have critical problems with your system or have launched Basalt wierdly.");
+      let message = format!("Critical error: HOME directory could not be retrieved from the operating system. Either you have critical problems with your system or have launched Basalt weirdly.");
       return Self::BasaltDirsError {
         message,
         note_graph_ui: NoteGraphUi::new(Rc::new(RefCell::new(Vein::new_native_temp_vein().expect("FIXME")))),
