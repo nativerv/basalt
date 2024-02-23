@@ -1,5 +1,5 @@
 use crate::features::note_graph::note_graph_mock::{MockGraph, NodeId, NODES};
-use crate::features::veins::{Vein, VeinId};
+use crate::features::veins::Vein;
 use crate::lib::fdp::eades_custom;
 use crate::lib::graph::{EdgeIncidents, Graph};
 use egui::{containers::*, *};

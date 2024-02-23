@@ -1,11 +1,11 @@
 use crate::features::configuration::Configuration;
 use crate::features::veins::Vein;
 use serde::{Deserialize, Serialize};
+use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::io;
 use std::ops::Deref;
 use std::path::Path;
-use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::Arc;
 
@@ -47,11 +47,15 @@ impl Veins {
       .veins
       .iter()
       .map(|vein_id| {
-        (vein_id.clone(), Vein::new_native(Path::new(&**vein_id)).map(RefCell::new).map(Rc::new))
+        (
+          vein_id.clone(),
+          Vein::new_native(Path::new(&**vein_id))
+            .map(RefCell::new)
+            .map(Rc::new),
+        )
       })
       .collect::<VeinsHashMap>()
-      .into()
-    ;
+      .into();
 
     #[cfg(not(any(unix, windows)))]
     return unimplemented!();
@@ -71,7 +75,10 @@ impl Veins {
 
   /// Maybe get vein by id
   pub fn get_vein(&self, id: &VeinId) -> Option<Result<Rc<RefCell<Vein>>, &std::io::Error>> {
-    self.0.get(id).map(|maybe_vein| maybe_vein.as_ref().map(Rc::clone))
+    self
+      .0
+      .get(id)
+      .map(|maybe_vein| maybe_vein.as_ref().map(Rc::clone))
   }
 }
 

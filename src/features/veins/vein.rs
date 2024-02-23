@@ -42,7 +42,7 @@ pub struct Vein {
 
 /// Public methods
 impl Vein {
-  const CONFIG_DIRECTORY: &str = ".basalt";
+  const CONFIG_DIRECTORY: &'static str = ".basalt";
 
   pub fn new_native(path: &Path) -> io::Result<Self> {
     use walkdir::WalkDir;
