@@ -1,6 +1,8 @@
 //! Basalt library
 
 #![feature(stmt_expr_attributes)]
+// TODO: add these
+//#![feature(lint_reasons)]
 // Allow adequate module structure
 #![allow(clippy::module_inception)]
 // Allow disabling clippy for expressions etc.

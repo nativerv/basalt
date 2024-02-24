@@ -78,6 +78,7 @@ web-sys = "0.3"
 # Fast and small wasm
 [profile.release]
 opt-level = 2 
+#strip = "debuginfo"
 
 # Optimize all dependencies even in debug builds:
 [profile.dev.package."*"]

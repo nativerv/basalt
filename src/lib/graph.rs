@@ -7,6 +7,8 @@ pub struct EdgeIncidents<T> {
 /// It has to have an iterator over all nodes and all edges,
 /// as well as getters for nodes and edges.
 /// Iterator should be over pairs of nodes
+// FIXME: dead_code
+#[allow(dead_code)]
 pub trait Graph<'a> {
   type NodeId: 'a;
   type NodeData: 'a;
