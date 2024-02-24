@@ -12,6 +12,9 @@
 #![warn(missing_docs)]
 // TODO: add these
 //#![warn(clippy::unwrap_used)]
+// Allow annoying stuff
+#![allow(clippy::unit_arg)] // Some(func())
+#![allow(clippy::nonminimal_bool)] // !result.is_ok()
 
 mod basalt;
 mod features;

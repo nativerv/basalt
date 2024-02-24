@@ -1,7 +1,7 @@
 use crate::features::veins::VeinId;
 use egui::Color32;
 use serde::{Deserialize, Serialize};
-use serde_json::{self, Map, Value};
+use serde_json::{Map, Value};
 use std::fs::File;
 use std::io;
 use std::io::prelude::*;
@@ -129,7 +129,6 @@ impl Configuration {
 #[cfg(test)]
 mod test {
   use super::*;
-  use std::fs::File;
 
   #[test]
   fn read() {

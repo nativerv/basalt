@@ -16,7 +16,7 @@ pub struct VeinId(Arc<str>);
 impl Deref for VeinId {
   type Target = str;
   fn deref(&self) -> &'_ Self::Target {
-    &*self.0
+    &self.0
   }
 }
 impl VeinId {
@@ -62,7 +62,7 @@ impl Veins {
   }
 
   /// Creates a new empty `Veins` struct
-  pub fn new() -> Self {
+  pub const fn new() -> Self {
     Self(VeinsHashMap::new())
   }
 
@@ -75,6 +75,7 @@ impl Veins {
 
   /// Maybe get vein by id
   pub fn get_vein(&self, id: &VeinId) -> Option<Result<Rc<RefCell<Vein>>, &std::io::Error>> {
+    #[allow(clippy::useless_asref)]
     self
       .0
       .get(id)

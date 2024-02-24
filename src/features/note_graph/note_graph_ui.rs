@@ -94,7 +94,7 @@ impl NoteGraphUi {
     });
 
     fn cycle(n: f32, max: f32) -> f32 {
-      let range = max * 2.0 + 1.0;
+      let range = max.mul_add(2.0, 1.0);
       ((n % range) + range) % range - max
     }
 
@@ -104,7 +104,7 @@ impl NoteGraphUi {
     let mut current_x = 0.0;
     let mut current_y = 0.0 + delta;
     for (node_id, _) in self.note_graph.iter_nodes() {
-      if let None = self.node_positions.get(&node_id) {
+      if self.node_positions.get(&node_id).is_none() {
         self
           .node_positions
           .entry(node_id)

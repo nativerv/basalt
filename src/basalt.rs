@@ -1,5 +1,3 @@
-use eframe::egui;
-
 use crate::features::configuration::Configuration;
 use crate::features::note_graph::NoteGraphUi;
 use crate::features::veins::{Vein, VeinId, VeinSelectionUi, Veins};
@@ -9,9 +7,6 @@ use std::cell::RefCell;
 use std::fs::File;
 use std::io;
 use std::rc::Rc;
-
-const CONFIG_NOT_EXISTS_ERROR_TEXT: &str = r#"
-"#;
 
 /// Global Basalt state
 pub enum BasaltApp {
@@ -41,13 +36,12 @@ pub enum BasaltApp {
 
 impl Default for BasaltApp {
   fn default() -> Self {
-    let basalt_error: Option<io::Error> = None;
     // FIXME(portability): mobile
 
     let Some(basalt_dirs) = ProjectDirs::from("com", "basalt", "basalt") else {
       // TODO: also have a way to specify dirs as cli args or env vars
       log::error!("initializing basalt: CRITICAL: could not retrieve valid home directory path for your OS: required for configuration dir");
-      let message = format!("Critical error: HOME directory could not be retrieved from the operating system. Either you have critical problems with your system or have launched Basalt weirdly.");
+      let message = String::from("Critical error: HOME directory could not be retrieved from the operating system. Either you have critical problems with your system or have launched Basalt weirdly.");
       return Self::BasaltDirsError {
         message,
         note_graph_ui: NoteGraphUi::new(Rc::new(RefCell::new(
@@ -132,6 +126,8 @@ impl Default for BasaltApp {
 
     // FIXME: only one (the first) Vein is taken, should probably persist selected
     let current_vein = veins.iter().next().map(|(vein_id, ..)| vein_id.clone());
+    // TODO: clippy suggests a fix (only on nightly) that produces an error
+    #[allow(clippy::useless_asref)]
     let note_graph_ui = current_vein
       .as_ref()
       .and_then(|vein_id| veins.get_vein(vein_id))
@@ -157,11 +153,11 @@ impl BasaltApp {
   const CONFIG_FILE_NAME: &'static str = "basalt.json";
 
   fn reload(&mut self) {
-    *self = BasaltApp::default();
+    *self = Self::default();
   }
 
   fn prev_vein(&mut self) {
-    if let BasaltApp::Ok {
+    if let Self::Ok {
       veins,
       current_vein,
       ..
@@ -170,7 +166,7 @@ impl BasaltApp {
       let prev_vein_id = veins
         .iter()
         .rev()
-        .skip_while(|(&ref id, ..)| Some(id) != current_vein.as_ref())
+        .skip_while(|(id, ..)| Some(id) != current_vein.as_ref().as_ref())
         .map(|(id, ..)| id.clone())
         .nth(1);
       *current_vein = prev_vein_id.or_else(|| current_vein.clone());
@@ -178,7 +174,7 @@ impl BasaltApp {
   }
 
   fn next_vein(&mut self) {
-    if let BasaltApp::Ok {
+    if let Self::Ok {
       veins,
       current_vein,
       ..
@@ -186,7 +182,7 @@ impl BasaltApp {
     {
       let next_vein_id = veins
         .iter()
-        .skip_while(|(&ref id, ..)| Some(id) != current_vein.as_ref())
+        .skip_while(|(id, ..)| Some(id) != current_vein.as_ref().as_ref())
         .map(|(id, ..)| id.clone())
         .nth(1);
       *current_vein = next_vein_id.or_else(|| current_vein.clone());
@@ -201,7 +197,6 @@ impl BasaltApp {
     match mods {
       Modifiers { alt: true, .. } => ctx.set_debug_on_hover(true),
       Modifiers { alt: false, .. } => ctx.set_debug_on_hover(false),
-      _ => {},
     }
 
     // PERF: `Vec` clone each frame
@@ -220,13 +215,13 @@ impl BasaltApp {
 
 impl eframe::App for BasaltApp {
   fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-    self.handle_global_keys(&ctx);
+    self.handle_global_keys(ctx);
 
     CentralPanel::default().show(ctx, |ui| {
       match self {
-        BasaltApp::Ok {
-          basalt_dirs,
-          configuration,
+        Self::Ok {
+          basalt_dirs: _,
+          configuration: _,
           veins,
           current_vein,
           note_graph_ui,
@@ -235,12 +230,12 @@ impl eframe::App for BasaltApp {
             ui.add(VeinSelectionUi::new(&*veins, current_vein));
           });
           ui.vertical(|ui| {
-            note_graph_ui
-              .as_mut()
-              .and_then(|note_graph_ui| Some(note_graph_ui.ui(ui)));
+            if let Some(note_graph_ui) = note_graph_ui.as_mut() {
+              note_graph_ui.ui(ui)
+            }
           });
         }
-        error => unimplemented!(),
+        _error => unimplemented!(),
       };
     });
   }

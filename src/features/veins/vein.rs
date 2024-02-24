@@ -107,8 +107,8 @@ impl Vein {
   }
 
   #[cfg(any(windows, unix))]
-  pub fn new_native_temp_vein() -> io::Result<Vein> {
-    Vein::new_native(&temp_file::temp_dir().expect("FIXME"))
+  pub fn new_native_temp_vein() -> io::Result<Self> {
+    Self::new_native(&temp_file::temp_dir().expect("FIXME"))
   }
 
   pub fn iter(&self) -> Iter<'_> {
