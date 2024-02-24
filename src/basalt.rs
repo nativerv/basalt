@@ -10,26 +10,42 @@ use std::rc::Rc;
 
 /// Global Basalt state
 pub enum BasaltApp {
+  /// The Basalt config is fine and there is actual data/notes that we can use.
   Ok {
+    /// The global Basalt dirs inferred per platform
     basalt_dirs: ProjectDirs,
+    /// The global Basalt configuration
     configuration: Configuration,
-    /// A list of veins known to the this Basalt instance.
+    /// A list of veins known to the this Basalt instance
     veins: Veins,
+    /// Currently selected Vein
     current_vein: Option<VeinId>,
+    /// State for the graph component
     note_graph_ui: Option<NoteGraphUi>,
   },
+  /// Some kind of a mechanical error (os, syntax, etc.) while loading the Basalt config.
   ConfigurationError {
+    /// Error message
     message: String,
+    /// The global Basalt dirs inferred per platform
     basalt_dirs: ProjectDirs,
+    /// Show fake notes with instructions of what to do
     note_graph_ui: NoteGraphUi,
   },
+  /// The Basalt config itself is fine but the veins (note folders) are not defined in it.
   NoVeins {
+    /// Error message
     message: String,
+    /// The global Basalt dirs inferred per platform
     basalt_dirs: ProjectDirs,
+    /// Show fake notes with instructions of what to do
     note_graph_ui: NoteGraphUi,
   },
+  /// Can't find a place for the Basalt config on the system. So no HOME directory or Linux etc.
   BasaltDirsError {
+    /// Error message
     message: String,
+    /// Show fake notes with instructions of what to do
     note_graph_ui: NoteGraphUi,
   },
 }

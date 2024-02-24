@@ -8,6 +8,7 @@ pub struct SelectableItem {
 }
 
 impl SelectableItem {
+  /// Construct new SelectableItem
   pub fn new(selected: bool, text: impl Into<WidgetText>) -> Self {
     Self {
       selected,
