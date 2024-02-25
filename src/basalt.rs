@@ -2,7 +2,7 @@ use crate::features::configuration::Configuration;
 use crate::features::note_graph::NoteGraphUi;
 use crate::features::veins::{Vein, VeinId, VeinSelectionUi, Veins};
 use directories::ProjectDirs;
-use egui::{CentralPanel, Event, Key};
+use egui::{CentralPanel, Color32, Event, Key, RichText};
 use std::cell::RefCell;
 use std::fs::File;
 use std::io;
@@ -142,18 +142,7 @@ impl Default for BasaltApp {
 
     // FIXME: only one (the first) Vein is taken, should probably persist selected
     let current_vein = veins.iter().next().map(|(vein_id, ..)| vein_id.clone());
-    // TODO: clippy suggests a fix (only on nightly) that produces an error
-    #[allow(clippy::useless_asref)]
-    let note_graph_ui = current_vein
-      .as_ref()
-      .and_then(|vein_id| veins.get_vein(vein_id))
-      .and_then(|maybe_vein| {
-        maybe_vein
-          .as_ref()
-          .map(Rc::clone)
-          .map(NoteGraphUi::new)
-          .ok()
-      });
+    let note_graph_ui = None;
 
     Self::Ok {
       basalt_dirs,
@@ -242,6 +231,24 @@ impl eframe::App for BasaltApp {
           current_vein,
           note_graph_ui,
         } => {
+          log::debug!("{current_vein:#?}");
+          match current_vein
+            .as_ref()
+            .and_then(|vein_id| veins.get_vein(vein_id))
+          {
+            Some(Err(_)) => {
+              *note_graph_ui = None;
+            }
+            Some(Ok(vein)) => {
+              // TODO: clippy suggests a fix (only on nightly) that produces an error
+              #[allow(clippy::useless_asref)]
+              if note_graph_ui.is_none() {
+                *note_graph_ui = Some(NoteGraphUi::new(Rc::clone(&vein)));
+              }
+            }
+            None => unreachable!("invariant: `current_vein` should hold only correct `VeinId`'s"),
+          };
+
           ui.vertical(|ui| {
             ui.add(VeinSelectionUi::new(&*veins, current_vein));
           });
@@ -251,7 +258,29 @@ impl eframe::App for BasaltApp {
             }
           });
         }
-        _error => unimplemented!(),
+
+        Self::ConfigurationError {
+          message,
+          note_graph_ui,
+          ..
+        }
+        | Self::NoVeins {
+          message,
+          note_graph_ui,
+          ..
+        }
+        | Self::BasaltDirsError {
+          message,
+          note_graph_ui,
+          ..
+        } => {
+          ui.vertical(|ui| {
+            ui.label(RichText::new(&*message).color(Color32::RED));
+          });
+          ui.vertical(|ui| {
+            note_graph_ui.ui(ui);
+          });
+        }
       };
     });
   }
